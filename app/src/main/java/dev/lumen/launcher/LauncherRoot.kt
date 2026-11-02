@@ -3,7 +3,6 @@ package dev.lumen.launcher
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
-import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -282,8 +281,7 @@ private fun WidgetPage(
                         modifier = Modifier.fillMaxSize(),
                         factory = { ctx -> widgetHost.createView(ctx, item.id, info) },
                         update = { v ->
-                            val w = screenWidthDp - 24
-                            v.updateAppWidgetSize(Bundle.EMPTY, w, item.heightDp, w, item.heightDp)
+                            v.applySize(screenWidthDp - 24, item.heightDp)
                         },
                     )
                 } else {

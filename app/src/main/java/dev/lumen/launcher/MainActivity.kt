@@ -82,13 +82,18 @@ class MainActivity : ComponentActivity() {
     private fun startAddWidget(page: Int, info: AppWidgetProviderInfo) {
         pendingPage = page
         pendingId = widgetHost.allocateAppWidgetId()
-        if (widgetManager.bindAppWidgetIdIfAllowed(pendingId, info.provider)) {
+        val density = resources.displayMetrics.density
+        val widthDp = (resources.displayMetrics.widthPixels / density).toInt() - 24
+        val heightDp = (info.minHeight / density).toInt().coerceIn(80, 600)
+        val options = widgetOptions(widthDp, heightDp)
+        if (widgetManager.bindAppWidgetIdIfAllowed(pendingId, info.provider, options)) {
             configureOrFinish()
         } else {
             bindLauncher.launch(
                 Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pendingId)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
+                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_OPTIONS, options)
             )
         }
     }
