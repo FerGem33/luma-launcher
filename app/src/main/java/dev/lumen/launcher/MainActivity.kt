@@ -87,21 +87,12 @@ class MainActivity : ComponentActivity() {
 
     // ---- add-widget flow -------------------------------------------------------------------
 
-    /** Grid cells a widget wants by default (Samsung/AOSP rule of thumb: a cell is ~70dp). */
-    private fun defaultSpan(info: AppWidgetProviderInfo): Pair<Int, Int> {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            info.targetCellWidth > 0 && info.targetCellHeight > 0
-        ) return info.targetCellWidth to info.targetCellHeight
-        val d = resources.displayMetrics.density
-        val cols = Math.ceil(((info.minWidth / d) + 30) / 70.0).toInt()
-        val rows = Math.ceil(((info.minHeight / d) + 30) / 70.0).toInt()
-        return cols.coerceIn(1, GRID_COLS) to rows.coerceAtLeast(1)
-    }
-
-    private fun startAddWidget(page: Int, info: AppWidgetProviderInfo) {
+    private fun startAddWidget(page: Int, info: AppWidgetProviderInfo, cols: Int?, rows: Int?) {
         pendingPage = page
         pendingId = widgetHost.allocateAppWidgetId()
-        val (cols, rows) = defaultSpan(info)
+        val (defCols, defRows) = defaultSpan(this, info)
+        val cols = cols ?: defCols
+        val rows = rows ?: defRows
         pendingCols = cols
         pendingRows = rows
         val density = resources.displayMetrics.density

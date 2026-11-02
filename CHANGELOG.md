@@ -17,6 +17,12 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   indicator and a button to add pages.
 - Widget picker with previews, grouped by app, with a search field that filters by app name.
   Handles the bind-permission and widget-configuration flow.
+  - Previews use the same sources One UI does: generated previews, preview layouts, static
+    images, then the app icon. Samsung preview layouts that need the widget app's own view classes
+    are loaded with that app's code, only for preinstalled (system) apps.
+  - Providers that are indistinguishable to the user (same name, preview and size) are shown once.
+  - Samsung widgets that declare several sizes (2x1, 4x1, 2x2, 4x2) are listed once per size,
+    each with a preview made for that size; picking one adds the widget at that size.
 - Widget grid: each page is a 4-column grid of square cells.
   - New widgets start at their default size and take the first free spot;
     a toast is shown when the page is full.

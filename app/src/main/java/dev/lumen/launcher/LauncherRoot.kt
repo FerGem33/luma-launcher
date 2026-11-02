@@ -70,7 +70,7 @@ fun LauncherRoot(
     vm: LauncherViewModel,
     widgetHost: AppWidgetHost,
     widgetManager: AppWidgetManager,
-    onPickWidget: (page: Int, info: AppWidgetProviderInfo) -> Unit,
+    onPickWidget: (page: Int, info: AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit,
     onReleaseWidget: (Int) -> Unit,
     onConfigureWidget: (Int) -> Unit,
 ) {
@@ -152,7 +152,7 @@ fun LauncherRoot(
 
         pickerForPage?.let { page ->
             WidgetPicker(
-                onPick = { info -> pickerForPage = null; onPickWidget(page, info) },
+                onPick = { info, cols, rows -> pickerForPage = null; onPickWidget(page, info, cols, rows) },
                 onDismiss = { pickerForPage = null },
             )
         }
