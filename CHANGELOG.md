@@ -19,8 +19,11 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   Handles the bind-permission and widget-configuration flow.
   - Previews use the same sources One UI does: generated previews, preview layouts, static
     images, then the app icon. Samsung preview layouts that need the widget app's own view classes
-    are loaded with that app's code, only for preinstalled (system) apps.
-  - Providers that are indistinguishable to the user (same name, preview and size) are shown once.
+    are loaded with that app's code, only for preinstalled or platform-signed (Samsung) apps.
+  - Widgets are shown as cards, like One UI Home: the widget's name, then a preview per size it
+    offers at true relative scale, with the size underneath.
+  - Providers an app marks "hide from picker" (legacy and duplicate registrations) are not listed,
+    and providers that are indistinguishable to the user (same name, preview and size) are shown once.
   - Samsung widgets that declare several sizes (2x1, 4x1, 2x2, 4x2) are listed once per size,
     each with a preview made for that size; picking one adds the widget at that size.
 - Widget grid: each page is a 4-column grid of square cells.
@@ -49,6 +52,11 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   because `updateAppWidgetSize` drops extra keys.
 - Widgets that declare their settings screen only in Samsung's `semConfigureActivity`
   metadata (e.g. Alarm) now show a Settings button.
+- Samsung preview layouts from Samsung Health, SmartThings (Routines, Now, Screen remote) and others
+  failed to inflate because the inflater tried to build layout params for the root view from its
+  `@dimen` size; they are now inflated without a parent. Layouts that need the widget app's own view
+  classes (Clock, Calendar, Weather, Device care, ...) were rejected by the "system apps only" check,
+  but many Samsung apps are updated, non-system installs; platform-signed apps now qualify too.
 - Widgets no longer keep the default padding Android adds around older widgets, which left their
   background inset from the cell.
 - Crash when a widget was shown (`ArrayMap is immutable`): widget size updates were
