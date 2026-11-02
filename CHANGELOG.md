@@ -31,6 +31,7 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
     limits the widget declares (resize direction and minimum size).
   - A selected widget offers Remove and, for widgets that support it, Settings
     (re-opens the widget's settings screen, including Samsung's own "Widget settings" screens).
+  - Widgets are clipped to rounded corners, like One UI Home.
   - Long-press empty space for a page menu (add widget, remove page).
 - Home button resets to the home page and closes the drawer, picker and any selection.
 - Pinned apps and widget layout persisted in `SharedPreferences`.
@@ -48,6 +49,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   because `updateAppWidgetSize` drops extra keys.
 - Widgets that declare their settings screen only in Samsung's `semConfigureActivity`
   metadata (e.g. Alarm) now show a Settings button.
+- Widgets no longer keep the default padding Android adds around older widgets, which left their
+  background inset from the cell.
 - Crash when a widget was shown (`ArrayMap is immutable`): widget size updates were
   given the immutable `Bundle.EMPTY`.
 - Widgets showing "Can't show content" (notably Jetpack Glance widgets such as

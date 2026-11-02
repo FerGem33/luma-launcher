@@ -198,7 +198,11 @@ private fun WidgetCell(
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
                     factory = { ctx ->
-                        WidgetFrame(ctx).apply { addView(widgetHost.createView(ctx, item.id, info)) }
+                        WidgetFrame(ctx).apply {
+                            // Older widgets get default padding around their background; One UI Home doesn't
+                            // keep it, and it would leave the rounded clip cutting empty space.
+                            addView(widgetHost.createView(ctx, item.id, info).apply { setPadding(0, 0, 0, 0) })
+                        }
                     },
                     update = { frame ->
                         frame.onLongPress = onDragStart

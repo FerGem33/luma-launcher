@@ -1,6 +1,9 @@
 package dev.lumen.launcher
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Path
+import android.graphics.RectF
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.ViewConfiguration
@@ -16,6 +19,25 @@ class WidgetFrame(context: Context) : FrameLayout(context) {
     /** Movement since the previous event, in px. */
     var onDragBy: ((dx: Float, dy: Float) -> Unit)? = null
     var onDragEnd: ((cancelled: Boolean) -> Unit)? = null
+
+    // Widgets don't all round their own corners (Samsung's stop when the host says it clips them), so the
+    // host does it. Clipping the canvas works even when Compose draws this view directly, unlike an outline.
+    private val clipPath = Path()
+    // One UI Home's corner radius; the system's own app-widget radius is smaller and looks off next to it.
+    private val cornerRadius: Float = 22f * resources.displayMetrics.density
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        clipPath.reset()
+        clipPath.addRoundRect(RectF(0f, 0f, w.toFloat(), h.toFloat()), cornerRadius, cornerRadius, Path.Direction.CW)
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        val saved = canvas.save()
+        canvas.clipPath(clipPath)
+        super.dispatchDraw(canvas)
+        canvas.restoreToCount(saved)
+    }
 
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private var downX = 0f
