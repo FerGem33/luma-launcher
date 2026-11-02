@@ -6,7 +6,9 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -24,6 +26,8 @@ class MainActivity : ComponentActivity() {
     // State of an in-flight "add widget" flow (bind permission -> configure -> done).
     private var pendingPage = -1
     private var pendingId = -1
+    private var pendingCols = 1
+    private var pendingRows = 1
 
     private val bindLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
@@ -38,6 +42,7 @@ class MainActivity : ComponentActivity() {
         )
         widgetHost = AppWidgetHost(applicationContext, HOST_ID)
         widgetManager = AppWidgetManager.getInstance(this)
+        vm.takeLegacyWidgetIds().forEach { widgetHost.deleteAppWidgetId(it) }
 
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
@@ -47,6 +52,9 @@ class MainActivity : ComponentActivity() {
                     widgetManager = widgetManager,
                     onPickWidget = ::startAddWidget,
                     onReleaseWidget = { widgetHost.deleteAppWidgetId(it) },
+                    onConfigureWidget = { id ->
+                        widgetHost.startAppWidgetConfigureActivityForResult(this, id, 0, REQ_RECONFIGURE, null)
+                    },
                 )
             }
         }
@@ -79,13 +87,26 @@ class MainActivity : ComponentActivity() {
 
     // ---- add-widget flow -------------------------------------------------------------------
 
+    /** Grid cells a widget wants by default (Samsung/AOSP rule of thumb: a cell is ~70dp). */
+    private fun defaultSpan(info: AppWidgetProviderInfo): Pair<Int, Int> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            info.targetCellWidth > 0 && info.targetCellHeight > 0
+        ) return info.targetCellWidth to info.targetCellHeight
+        val d = resources.displayMetrics.density
+        val cols = Math.ceil(((info.minWidth / d) + 30) / 70.0).toInt()
+        val rows = Math.ceil(((info.minHeight / d) + 30) / 70.0).toInt()
+        return cols.coerceIn(1, GRID_COLS) to rows.coerceAtLeast(1)
+    }
+
     private fun startAddWidget(page: Int, info: AppWidgetProviderInfo) {
         pendingPage = page
         pendingId = widgetHost.allocateAppWidgetId()
+        val (cols, rows) = defaultSpan(info)
+        pendingCols = cols
+        pendingRows = rows
         val density = resources.displayMetrics.density
-        val widthDp = (resources.displayMetrics.widthPixels / density).toInt() - 24
-        val heightDp = (info.minHeight / density).toInt().coerceIn(80, 600)
-        val options = widgetOptions(widthDp, heightDp)
+        val cellDp = ((resources.displayMetrics.widthPixels / density) - 16) / GRID_COLS
+        val options = widgetOptions((cellDp * cols).toInt() - 8, (cellDp * rows).toInt() - 8)
         if (widgetManager.bindAppWidgetIdIfAllowed(pendingId, info.provider, options)) {
             configureOrFinish()
         } else {
@@ -108,14 +129,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun finishPending() {
-        val info = widgetManager.getAppWidgetInfo(pendingId)
-        if (info == null) {
+        if (widgetManager.getAppWidgetInfo(pendingId) == null || !vm.addWidget(pendingPage, pendingId, pendingCols, pendingRows)) {
+            if (widgetManager.getAppWidgetInfo(pendingId) != null) {
+                Toast.makeText(this, "No space left on this page", Toast.LENGTH_SHORT).show()
+            }
             cancelPending()
             return
         }
-        val density = resources.displayMetrics.density
-        val heightDp = (info.minHeight / density).toInt().coerceIn(80, 600)
-        vm.addWidget(pendingPage, WidgetItem(pendingId, heightDp))
         pendingId = -1
     }
 
@@ -127,5 +147,6 @@ class MainActivity : ComponentActivity() {
     private companion object {
         const val HOST_ID = 1024
         const val REQ_CONFIGURE = 4242
+        const val REQ_RECONFIGURE = 4243
     }
 }

@@ -18,8 +18,13 @@ import org.json.JSONObject
 
 data class AppEntry(val key: String, val label: String, val component: ComponentName)
 
-/** A widget placed on a widget page. [heightDp] is user-adjustable. */
-data class WidgetItem(val id: Int, val heightDp: Int)
+const val GRID_COLS = 4
+
+/** A widget placed on a widget page's grid, in cell units. */
+data class WidgetItem(val id: Int, val col: Int, val row: Int, val colSpan: Int, val rowSpan: Int) {
+    fun overlaps(o: WidgetItem) =
+        col < o.col + o.colSpan && o.col < col + colSpan && row < o.row + o.rowSpan && o.row < row + rowSpan
+}
 
 class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("lumen", Context.MODE_PRIVATE)
@@ -33,6 +38,8 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     /** Widget pages (the home page is separate and always first). */
     var pages by mutableStateOf(loadPages())
         private set
+    /** Number of grid rows that fit on a widget page; reported by the UI once measured. */
+    var gridRows by mutableIntStateOf(6)
     /** Incremented when the Home button is pressed, so the UI can reset itself. */
     var homeSignal by mutableIntStateOf(0)
         private set
@@ -106,37 +113,74 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         return removed
     }
 
-    fun addWidget(page: Int, item: WidgetItem) =
-        updatePages(pages.mapIndexed { i, w -> if (i == page) w + item else w })
+    /** Places a widget in the first free spot. Returns false if the page has no room. */
+    fun addWidget(page: Int, id: Int, colSpan: Int, rowSpan: Int): Boolean {
+        val items = pages.getOrNull(page) ?: return false
+        val cs = colSpan.coerceIn(1, GRID_COLS)
+        val rs = rowSpan.coerceIn(1, gridRows)
+        for (r in 0..gridRows - rs) for (c in 0..GRID_COLS - cs) {
+            val candidate = WidgetItem(id, c, r, cs, rs)
+            if (items.none { it.overlaps(candidate) }) {
+                updatePages(pages.mapIndexed { i, w -> if (i == page) w + candidate else w })
+                return true
+            }
+        }
+        return false
+    }
+
+    /** Moves/resizes a widget if the result stays inside the grid and doesn't overlap others. */
+    fun tryUpdate(page: Int, new: WidgetItem): Boolean {
+        val items = pages.getOrNull(page) ?: return false
+        val inside = new.col >= 0 && new.row >= 0 && new.colSpan >= 1 && new.rowSpan >= 1 &&
+            new.col + new.colSpan <= GRID_COLS && new.row + new.rowSpan <= gridRows
+        if (!inside || items.any { it.id != new.id && it.overlaps(new) }) return false
+        if (items.firstOrNull { it.id == new.id } == new) return true
+        updatePages(pages.mapIndexed { i, w -> if (i == page) w.map { if (it.id == new.id) new else it } else w })
+        return true
+    }
 
     fun removeWidget(page: Int, id: Int) =
         updatePages(pages.mapIndexed { i, w -> if (i == page) w.filter { it.id != id } else w })
 
-    fun resizeWidget(page: Int, id: Int, deltaDp: Int) =
-        updatePages(pages.mapIndexed { i, w ->
-            if (i != page) w
-            else w.map { if (it.id == id) it.copy(heightDp = (it.heightDp + deltaDp).coerceIn(60, 800)) else it }
-        })
+    /** Widget ids stored by the old (full-width list) layout; returned once so they can be released. */
+    fun takeLegacyWidgetIds(): List<Int> {
+        val raw = prefs.getString("pages", null) ?: return emptyList()
+        prefs.edit().remove("pages").apply()
+        val ids = mutableListOf<Int>()
+        runCatching {
+            val outer = JSONArray(raw)
+            for (p in 0 until outer.length()) {
+                val inner = outer.getJSONArray(p)
+                for (w in 0 until inner.length()) ids += inner.getJSONObject(w).getInt("id")
+            }
+        }
+        return ids
+    }
 
     private fun updatePages(new: List<List<WidgetItem>>) {
         pages = new
         val json = JSONArray()
         new.forEach { page ->
             json.put(JSONArray().also { a ->
-                page.forEach { a.put(JSONObject().put("id", it.id).put("h", it.heightDp)) }
+                page.forEach {
+                    a.put(
+                        JSONObject().put("id", it.id).put("c", it.col).put("r", it.row)
+                            .put("cs", it.colSpan).put("rs", it.rowSpan)
+                    )
+                }
             })
         }
-        prefs.edit().putString("pages", json.toString()).apply()
+        prefs.edit().putString("pages_v2", json.toString()).apply()
     }
 
     private fun loadPages(): List<List<WidgetItem>> {
-        val raw = prefs.getString("pages", null) ?: return listOf(emptyList())
+        val raw = prefs.getString("pages_v2", null) ?: return listOf(emptyList())
         val outer = JSONArray(raw)
         return List(outer.length()) { p ->
             val inner = outer.getJSONArray(p)
             List(inner.length()) { w ->
                 val o = inner.getJSONObject(w)
-                WidgetItem(o.getInt("id"), o.getInt("h"))
+                WidgetItem(o.getInt("id"), o.getInt("c"), o.getInt("r"), o.getInt("cs"), o.getInt("rs"))
             }
         }
     }

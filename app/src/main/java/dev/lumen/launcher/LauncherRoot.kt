@@ -72,26 +72,23 @@ fun LauncherRoot(
     widgetManager: AppWidgetManager,
     onPickWidget: (page: Int, info: AppWidgetProviderInfo) -> Unit,
     onReleaseWidget: (Int) -> Unit,
+    onConfigureWidget: (Int) -> Unit,
 ) {
     val pagerState = rememberPagerState { 1 + vm.pages.size }
     val scope = rememberCoroutineScope()
     var drawerOpen by remember { mutableStateOf(false) }
     var pickerForPage by remember { mutableStateOf<Int?>(null) }
-    var editMode by remember { mutableStateOf(false) }
 
     LaunchedEffect(vm.homeSignal) {
         drawerOpen = false
         pickerForPage = null
-        editMode = false
         pagerState.animateScrollToPage(0)
     }
-    LaunchedEffect(pagerState.currentPage) { editMode = false }
 
     BackHandler {
         when {
             pickerForPage != null -> pickerForPage = null
             drawerOpen -> drawerOpen = false
-            editMode -> editMode = false
             pagerState.currentPage != 0 -> scope.launch { pagerState.animateScrollToPage(0) }
         }
     }
@@ -124,13 +121,9 @@ fun LauncherRoot(
                         pageIndex = page - 1,
                         widgetHost = widgetHost,
                         widgetManager = widgetManager,
-                        editMode = editMode,
-                        onToggleEdit = { editMode = !editMode },
                         onAddWidget = { pickerForPage = page - 1 },
-                        onRemovePage = { idx ->
-                            vm.removePage(idx).forEach(onReleaseWidget)
-                            editMode = false
-                        },
+                        onRemovePage = { idx -> vm.removePage(idx).forEach(onReleaseWidget) },
+                        onConfigureWidget = onConfigureWidget,
                     )
                 }
             }
@@ -247,79 +240,6 @@ fun AppActionsMenu(expanded: Boolean, onDismiss: () -> Unit, pinned: Boolean, en
         DropdownMenuItem(text = { Text("App info") }, onClick = { vm.showAppInfo(entry); onDismiss() })
         DropdownMenuItem(text = { Text("Uninstall") }, onClick = { vm.uninstall(entry); onDismiss() })
     }
-}
-
-// ---- Widget pages ----------------------------------------------------------------------------
-
-@Composable
-private fun WidgetPage(
-    vm: LauncherViewModel,
-    pageIndex: Int,
-    widgetHost: AppWidgetHost,
-    widgetManager: AppWidgetManager,
-    editMode: Boolean,
-    onToggleEdit: () -> Unit,
-    onAddWidget: () -> Unit,
-    onRemovePage: (Int) -> Unit,
-) {
-    val widgets = vm.pages.getOrNull(pageIndex) ?: return
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
-            .pointerInput(Unit) { detectTapGestures(onLongPress = { onToggleEdit() }) }
-            .padding(horizontal = 12.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        widgets.forEach { item ->
-            val info = remember(item.id) { widgetManager.getAppWidgetInfo(item.id) }
-            Box(Modifier.fillMaxWidth().height(item.heightDp.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))) {
-                if (info != null) {
-                    AndroidView(
-                        modifier = Modifier.fillMaxSize(),
-                        factory = { ctx -> widgetHost.createView(ctx, item.id, info) },
-                        update = { v ->
-                            v.applySize(screenWidthDp - 24, item.heightDp)
-                        },
-                    )
-                } else {
-                    Text("Widget unavailable", color = Color.Gray, modifier = Modifier.padding(16.dp))
-                }
-                if (editMode) {
-                    Box(Modifier.fillMaxSize().background(Color(0xCC000000)).clickable(
-                        interactionSource = remember { MutableInteractionSource() }, indication = null,
-                    ) {})
-                    Row(
-                        Modifier.align(Alignment.Center),
-                        horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    ) {
-                        EditAction("Shorter") { vm.resizeWidget(pageIndex, item.id, -40) }
-                        EditAction("Taller") { vm.resizeWidget(pageIndex, item.id, 40) }
-                        EditAction("Remove") {
-                            vm.removeWidget(pageIndex, item.id)
-                            widgetHost.deleteAppWidgetId(item.id)
-                        }
-                    }
-                }
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            EditAction("+ Add widget", onAddWidget)
-            EditAction(if (editMode) "Done" else "Edit", onToggleEdit)
-            if (editMode) EditAction("Remove page") { onRemovePage(pageIndex) }
-        }
-        Spacer(Modifier.height(24.dp))
-    }
-}
-
-@Composable
-private fun EditAction(label: String, onClick: () -> Unit) {
-    Text(
-        label, color = Color.White, fontSize = 15.sp,
-        modifier = Modifier.clickable(onClick = onClick).padding(vertical = 8.dp, horizontal = 4.dp),
-    )
 }
 
 // ---- Page indicator --------------------------------------------------------------------------
