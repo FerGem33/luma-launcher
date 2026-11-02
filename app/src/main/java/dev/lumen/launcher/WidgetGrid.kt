@@ -180,6 +180,7 @@ private fun WidgetCell(
     onRemove: () -> Unit,
     onConfigure: () -> Unit,
 ) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val inset = 4.dp
     val widthDp = (cellDp * item.colSpan - inset * 2).value.toInt()
     val heightDp = (cellDp * item.rowSpan - inset * 2).value.toInt()
@@ -203,7 +204,7 @@ private fun WidgetCell(
                         frame.onLongPress = onDragStart
                         frame.onDragBy = { dx, dy -> onDragBy(Offset(dx, dy)) }
                         frame.onDragEnd = onDragEnd
-                        (frame.getChildAt(0) as? AppWidgetHostView)?.applySize(widthDp, heightDp)
+                        (frame.getChildAt(0) as? AppWidgetHostView)?.applySize(widthDp, heightDp, item.colSpan, item.rowSpan)
                     },
                 )
             } else {
@@ -234,7 +235,7 @@ private fun WidgetCell(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ActionChip("Remove", onRemove)
-                    if (info != null && canReconfigure(info)) ActionChip("Settings", onConfigure)
+                    if (info != null && canReconfigure(ctx, info)) ActionChip("Settings", onConfigure)
                 }
             }
 
@@ -264,8 +265,9 @@ private fun WidgetCell(
     }
 }
 
-private fun canReconfigure(info: AppWidgetProviderInfo): Boolean =
-    info.configure != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+private fun canReconfigure(ctx: android.content.Context, info: AppWidgetProviderInfo): Boolean =
+    samsungConfigureActivity(ctx, info) != null ||
+        info.configure != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
         info.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_RECONFIGURABLE != 0
 
 @Composable

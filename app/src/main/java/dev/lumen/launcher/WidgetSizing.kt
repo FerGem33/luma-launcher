@@ -14,8 +14,9 @@ import android.util.SizeF
 /**
  * Widget size options. Modern widgets (notably Jetpack Glance ones) read
  * [AppWidgetManager.OPTION_APPWIDGET_SIZES]; leaving it empty makes them show "Can't show content".
+ * Samsung widgets additionally read One UI's private span/size options (see [samsungOptions]).
  */
-fun widgetOptions(widthDp: Int, heightDp: Int): Bundle = Bundle().apply {
+fun widgetOptions(ctx: Context, widthDp: Int, heightDp: Int, cols: Int, rows: Int): Bundle = Bundle().apply {
     putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp)
     putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, widthDp)
     putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, heightDp)
@@ -26,13 +27,39 @@ fun widgetOptions(widthDp: Int, heightDp: Int): Bundle = Bundle().apply {
             arrayListOf(SizeF(widthDp.toFloat(), heightDp.toFloat())),
         )
     }
+    putAll(samsungOptions(ctx, cols, rows))
 }
 
-fun AppWidgetHostView.applySize(widthDp: Int, heightDp: Int) {
+/**
+ * Options One UI Home passes to widgets (undocumented). Samsung's own widgets use them to pick a
+ * layout and to decide which choices their settings screen offers (e.g. Weather's daily/hourly).
+ * `semWidgetSize` is one bit per size, see [SAMSUNG_SIZES].
+ * Other apps ignore unknown keys.
+ */
+fun samsungOptions(ctx: Context, cols: Int, rows: Int): Bundle {
+    val sizes = SAMSUNG_SIZES.map { Triple(it.cols, it.rows, it.bit) }
+    val size = sizes.minBy { (c, r, _) -> Math.abs(c - cols) + Math.abs(r - rows) }.third
+    return Bundle().apply {
+        putInt("semAppWidgetColumnSpan", cols)
+        putInt("semAppWidgetRowSpan", rows)
+        putInt("semWidgetSize", size)
+        putInt("semWidgetStyle", 1)
+        putInt("semHostType", 1)
+        putFloat("semDisplayDensity", ctx.resources.displayMetrics.density)
+        putInt("darkModeStatus", ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK)
+    }
+}
+
+fun AppWidgetHostView.applySize(widthDp: Int, heightDp: Int, cols: Int, rows: Int) {
+    val extras = samsungOptions(context, cols, rows)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        updateAppWidgetSize(Bundle(), listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
+        updateAppWidgetSize(extras, listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
     } else {
-        updateAppWidgetSize(Bundle(), widthDp, heightDp, widthDp, heightDp)
+        updateAppWidgetSize(extras, widthDp, heightDp, widthDp, heightDp)
+    }
+    // The host view only forwards the size keys in some Android versions; send the rest directly.
+    if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+        AppWidgetManager.getInstance(context).updateAppWidgetOptions(appWidgetId, extras)
     }
 }
 
@@ -103,3 +130,15 @@ fun samsungVariants(ctx: Context, info: AppWidgetProviderInfo): List<SizeVariant
         .map { SizeVariant(it.cols, it.rows, layouts.getValue(it.attr)) }
         .sortedWith(compareBy({ it.cols }, { it.rows }))
 }.getOrDefault(emptyList())
+
+/**
+ * Samsung widgets whose settings screen isn't their standard `configure` activity declare it in
+ * `android.appwidget.provider.semConfigureActivity`; One UI Home's "Settings" uses that.
+ */
+fun samsungConfigureActivity(ctx: Context, info: AppWidgetProviderInfo): ComponentName? = runCatching {
+    val md = ctx.packageManager.getReceiverInfo(info.provider, PackageManager.GET_META_DATA).metaData
+    md?.getString("android.appwidget.provider.semConfigureActivity")?.let {
+        val pkg = info.provider.packageName
+        ComponentName(pkg, if (it.startsWith(".")) pkg + it else it)
+    }
+}.getOrNull()

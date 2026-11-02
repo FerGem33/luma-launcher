@@ -52,9 +52,7 @@ class MainActivity : ComponentActivity() {
                     widgetManager = widgetManager,
                     onPickWidget = ::startAddWidget,
                     onReleaseWidget = { widgetHost.deleteAppWidgetId(it) },
-                    onConfigureWidget = { id ->
-                        widgetHost.startAppWidgetConfigureActivityForResult(this, id, 0, REQ_RECONFIGURE, null)
-                    },
+                    onConfigureWidget = ::openWidgetSettings,
                 )
             }
         }
@@ -85,6 +83,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Same as One UI Home's "Settings": Samsung's own settings activity if it has one, else the standard one. */
+    private fun openWidgetSettings(id: Int) {
+        val info = widgetManager.getAppWidgetInfo(id) ?: return
+        val sem = samsungConfigureActivity(this, info)
+        val started = sem != null && runCatching {
+            startActivity(
+                Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE)
+                    .setComponent(sem)
+                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+            )
+        }.isSuccess
+        if (!started) widgetHost.startAppWidgetConfigureActivityForResult(this, id, 0, REQ_RECONFIGURE, null)
+    }
+
     // ---- add-widget flow -------------------------------------------------------------------
 
     private fun startAddWidget(page: Int, info: AppWidgetProviderInfo, cols: Int?, rows: Int?) {
@@ -97,7 +109,7 @@ class MainActivity : ComponentActivity() {
         pendingRows = rows
         val density = resources.displayMetrics.density
         val cellDp = ((resources.displayMetrics.widthPixels / density) - 16) / GRID_COLS
-        val options = widgetOptions((cellDp * cols).toInt() - 8, (cellDp * rows).toInt() - 8)
+        val options = widgetOptions(this, (cellDp * cols).toInt() - 8, (cellDp * rows).toInt() - 8, cols, rows)
         if (widgetManager.bindAppWidgetIdIfAllowed(pendingId, info.provider, options)) {
             configureOrFinish()
         } else {

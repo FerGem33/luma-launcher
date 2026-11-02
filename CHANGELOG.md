@@ -30,7 +30,7 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   - A selected widget shows edge handles to resize it in whole cells, within the
     limits the widget declares (resize direction and minimum size).
   - A selected widget offers Remove and, for widgets that support it, Settings
-    (re-opens the widget's configuration screen).
+    (re-opens the widget's settings screen, including Samsung's own "Widget settings" screens).
   - Long-press empty space for a page menu (add widget, remove page).
 - Home button resets to the home page and closes the drawer, picker and any selection.
 - Pinned apps and widget layout persisted in `SharedPreferences`.
@@ -42,6 +42,12 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Fixed
 
+- Samsung widgets (Weather, Clock/Alarm, ...) now get the same private host options One UI Home
+  passes (grid span, size code, style), so their settings screens offer every choice, such as
+  Weather's daily/hourly forecast. Options are also pushed with a direct `updateAppWidgetOptions` call,
+  because `updateAppWidgetSize` drops extra keys.
+- Widgets that declare their settings screen only in Samsung's `semConfigureActivity`
+  metadata (e.g. Alarm) now show a Settings button.
 - Crash when a widget was shown (`ArrayMap is immutable`): widget size updates were
   given the immutable `Bundle.EMPTY`.
 - Widgets showing "Can't show content" (notably Jetpack Glance widgets such as
