@@ -15,7 +15,7 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   fast-scroll bar, and a bottom search field (the Go key launches the first match).
 - Samsung-style swipeable widget pages hosted with `AppWidgetHost`, with a page
   indicator and a button to add pages.
-- Widget picker with previews, grouped by app, with a search field that filters by app name.
+- Widget picker with previews, grouped by app, with a search field that filters by app name or widget name.
   Handles the bind-permission and widget-configuration flow.
   - Previews use the same sources One UI does: generated previews, preview layouts, static
     images, then the app icon. Samsung preview layouts that need the widget app's own view classes

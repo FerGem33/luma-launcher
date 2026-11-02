@@ -67,7 +67,8 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
             }
             // A widget that declares several sizes becomes one entry per size, like One UI Home.
             .flatMap { (info, variants) ->
-                if (variants.size >= 2) variants.map { PickerEntry(info, it) } else listOf(PickerEntry(info, null))
+                val label = info.loadLabel(pm).toString()
+                if (variants.size >= 2) variants.map { PickerEntry(info, it, label) } else listOf(PickerEntry(info, null, label))
             }
             .groupBy { pm.getApplicationLabel(pm.getApplicationInfo(it.info.provider.packageName, 0)).toString() }
             .toSortedMap(String.CASE_INSENSITIVE_ORDER)
@@ -75,9 +76,13 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
     val density = ctx.resources.displayMetrics.density
     var query by remember { mutableStateOf("") }
     val q = query.trim()
+    // Matches the app name (then all its widgets are shown) or an individual widget's name.
     val filtered = remember(groups, q) {
         if (q.isEmpty()) groups
-        else groups.filterKeys { it.contains(q, ignoreCase = true) }
+        else groups.mapNotNull { (app, entries) ->
+            val shown = if (app.contains(q, ignoreCase = true)) entries else entries.filter { it.label.contains(q, ignoreCase = true) }
+            if (shown.isEmpty()) null else app to shown
+        }.toMap()
     }
 
     Column(
@@ -105,7 +110,7 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
                         .background(Color(0xFF1C1C1E), RoundedCornerShape(24.dp))
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                 ) {
-                    if (query.isEmpty()) Text("Search apps", color = Color(0xFF777777), fontSize = 18.sp)
+                    if (query.isEmpty()) Text("Search apps and widgets", color = Color(0xFF777777), fontSize = 18.sp)
                     inner()
                 }
             },
@@ -125,7 +130,7 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
                     ) {
                         WidgetPreview(info, v)
                         Column(Modifier.padding(start = 16.dp).align(Alignment.CenterVertically)) {
-                            Text(info.loadLabel(ctx.packageManager), color = Color.White, fontSize = 17.sp)
+                            Text(entry.label, color = Color.White, fontSize = 17.sp)
                             Text(
                                 (v?.let { it.cols to it.rows } ?: defaultSpan(ctx, info)).let { (c, r) -> "$c × $r" },
                                 color = Color(0xFF777777), fontSize = 12.sp,
@@ -235,4 +240,4 @@ private fun buildLivePreview(ctx: Context, info: AppWidgetProviderInfo, layoutOv
 }
 
 /** One row in the picker: a widget, optionally pinned to one of the sizes it declares. */
-private class PickerEntry(val info: AppWidgetProviderInfo, val variant: SizeVariant?)
+private class PickerEntry(val info: AppWidgetProviderInfo, val variant: SizeVariant?, val label: String)
