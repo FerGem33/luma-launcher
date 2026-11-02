@@ -57,6 +57,7 @@ import androidx.core.graphics.drawable.toBitmap
 @Composable
 fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
+    val t = LocalLumen.current
     val groups = remember {
         val pm = ctx.packageManager
         AppWidgetManager.getInstance(ctx).installedProviders
@@ -95,29 +96,29 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
     Column(
         Modifier
             .fillMaxSize()
-            .background(Color(0xF2000000))
+            .background(t.overlay)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding(),
     ) {
         Row(Modifier.fillMaxWidth().padding(24.dp)) {
-            Text("Add widget", color = Color.White, fontSize = 22.sp, modifier = Modifier.weight(1f))
-            Text("Cancel", color = Color(0xFF999999), fontSize = 16.sp, modifier = Modifier.clickable(onClick = onDismiss))
+            Text("Add widget", color = t.fg, fontSize = 22.sp, modifier = Modifier.weight(1f))
+            Text("Cancel", color = t.fg2, fontSize = 16.sp, modifier = Modifier.clickable(onClick = onDismiss))
         }
         BasicTextField(
             value = query,
             onValueChange = { query = it },
             singleLine = true,
-            textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
-            cursorBrush = SolidColor(Color.White),
+            textStyle = TextStyle(color = t.fg, fontSize = 18.sp, fontFamily = t.font),
+            cursorBrush = SolidColor(t.fg),
             decorationBox = { inner ->
                 Box(
                     Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)
-                        .background(Color(0xFF1C1C1E), RoundedCornerShape(24.dp))
+                        .background(t.surface, RoundedCornerShape(24.dp))
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                 ) {
-                    if (query.isEmpty()) Text("Search apps and widgets", color = Color(0xFF777777), fontSize = 18.sp)
+                    if (query.isEmpty()) Text("Search apps and widgets", color = t.fg2, fontSize = 18.sp)
                     inner()
                 }
             },
@@ -125,7 +126,7 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
         LazyColumn(Modifier.weight(1f)) {
             filtered.forEach { (app, widgets) ->
                 item {
-                    Text(app, color = Color(0xFF999999), fontSize = 14.sp,
+                    Text(app, color = t.fg2, fontSize = 14.sp,
                         modifier = Modifier.padding(start = 24.dp, top = 20.dp, bottom = 6.dp))
                 }
                 items(widgets) { w -> WidgetCard(w, onPick) }
@@ -139,17 +140,18 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
 @Composable
 private fun WidgetCard(w: PickerWidget, onPick: (AppWidgetProviderInfo, Int?, Int?) -> Unit) {
     val ctx = LocalContext.current
+    val t = LocalLumen.current
     val sizes: List<SizeVariant?> = w.variants.ifEmpty { listOf(null) }
     Column(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF1C1C1E))
+            .background(t.surface)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(w.label, color = Color.White, fontSize = 15.sp, textAlign = TextAlign.Center)
+        Text(w.label, color = t.fg, fontSize = 15.sp, textAlign = TextAlign.Center)
         FlowRow(
             Modifier.padding(top = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
@@ -162,7 +164,7 @@ private fun WidgetCard(w: PickerWidget, onPick: (AppWidgetProviderInfo, Int?, In
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     WidgetPreview(w.info, v, cols, rows)
-                    Text("$cols×$rows", color = Color(0xFF999999), fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+                    Text("$cols×$rows", color = t.fg2, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
                 }
             }
         }
@@ -199,7 +201,7 @@ private fun WidgetPreview(info: AppWidgetProviderInfo, variant: SizeVariant?, co
     }
 
     Box(
-        Modifier.size(PreviewCell * tileCols, PreviewCell * tileRows).clip(RoundedCornerShape(12.dp)).background(Color(0xFF2C2C2E)),
+        Modifier.size(PreviewCell * tileCols, PreviewCell * tileRows).clip(RoundedCornerShape(12.dp)).background(LocalLumen.current.surfaceHigh),
         contentAlignment = Alignment.Center,
     ) {
         when {

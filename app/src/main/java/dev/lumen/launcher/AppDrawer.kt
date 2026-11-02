@@ -55,6 +55,7 @@ private fun letterOf(label: String): Char =
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -> Unit) {
+    val t = LocalLumen.current
     var query by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -62,7 +63,11 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
 
     val rows: List<Row2> = remember(vm.apps, query) {
         if (searching) {
-            vm.apps.filter { it.label.contains(query.trim(), ignoreCase = true) }.map { Row2.App(it) }
+            // Names that start with the query come first, then the rest, each in alphabetical order.
+            val q = query.trim()
+            vm.apps.filter { it.label.contains(q, ignoreCase = true) }
+                .sortedBy { !it.label.startsWith(q, ignoreCase = true) }
+                .map { Row2.App(it) }
         } else {
             buildList<Row2> {
                 var last: Char? = null
@@ -81,7 +86,7 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
     Column(
         Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.96f))
+            .background(t.overlay)
             // swallow touches so nothing leaks to the pages underneath
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .statusBarsPadding()
@@ -92,14 +97,15 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
-                reverseLayout = false,
+                // While searching, results are anchored just above the search field, best match nearest it.
+                reverseLayout = searching,
             ) {
                 items(rows.size) { i ->
                     when (val r = rows[i]) {
                         is Row2.Header -> Text(
-                            r.letter.toString(), color = Color(0xFF777777), fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 32.dp, top = 18.dp, bottom = 2.dp),
+                            r.letter.toString(), color = t.accent ?: t.fg2, fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium, textAlign = t.align.text,
+                            modifier = Modifier.fillMaxWidth().padding(start = 32.dp, end = 12.dp, top = 18.dp, bottom = 2.dp),
                         )
                         is Row2.App -> DrawerItem(r.entry, vm, onLaunch)
                     }
@@ -115,8 +121,8 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
             value = query,
             onValueChange = { query = it },
             singleLine = true,
-            textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
-            cursorBrush = SolidColor(Color.White),
+            textStyle = TextStyle(color = t.fg, fontSize = 18.sp, fontFamily = t.font),
+            cursorBrush = SolidColor(t.fg),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = {
                 (rows.firstOrNull() as? Row2.App)?.let { onLaunch(it.entry) }
@@ -124,10 +130,10 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
             decorationBox = { inner ->
                 Box(
                     Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp)
-                        .background(Color(0xFF1C1C1E), androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+                        .background(t.surface, androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                 ) {
-                    if (query.isEmpty()) Text("Search apps", color = Color(0xFF777777), fontSize = 18.sp)
+                    if (query.isEmpty()) Text("Search apps", color = t.fg2, fontSize = 18.sp)
                     inner()
                 }
             },
@@ -138,14 +144,16 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DrawerItem(entry: AppEntry, vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit) {
+    val t = LocalLumen.current
     var menu by remember { mutableStateOf(false) }
     Box {
         Text(
-            entry.label, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Light, maxLines = 1,
+            if (t.list.lowercase) entry.label.lowercase() else entry.label,
+            color = t.fg, fontSize = 22.sp, fontWeight = t.list.weight, maxLines = 1, textAlign = t.align.text,
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(onClick = { onLaunch(entry) }, onLongClick = { menu = true })
-                .padding(start = 32.dp, top = 9.dp, bottom = 9.dp, end = 8.dp),
+                .padding(start = 32.dp, top = 9.dp, bottom = 9.dp, end = 12.dp),
         )
         AppActionsMenu(menu, { menu = false }, entry.key in vm.pinned, entry, vm)
     }
@@ -176,6 +184,6 @@ private fun AlphabetBar(letters: List<Char>, onLetter: (Char) -> Unit) {
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        letters.forEach { Text(it.toString(), color = Color(0xFF999999), fontSize = 11.sp) }
+        letters.forEach { Text(it.toString(), color = LocalLumen.current.fg2, fontSize = 11.sp) }
     }
 }

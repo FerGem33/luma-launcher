@@ -16,7 +16,16 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
+import androidx.core.view.WindowCompat
 
 class MainActivity : ComponentActivity() {
     private val vm: LauncherViewModel by viewModels()
@@ -45,15 +54,46 @@ class MainActivity : ComponentActivity() {
         vm.takeLegacyWidgetIds().forEach { widgetHost.deleteAppWidgetId(it) }
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
-                LauncherRoot(
-                    vm = vm,
-                    widgetHost = widgetHost,
-                    widgetManager = widgetManager,
-                    onPickWidget = ::startAddWidget,
-                    onReleaseWidget = { widgetHost.deleteAppWidgetId(it) },
-                    onConfigureWidget = ::openWidgetSettings,
+            val theme = vm.theme
+            val scheme = remember(theme) {
+                val base = if (theme.isLight) lightColorScheme() else darkColorScheme()
+                base.copy(
+                    primary = theme.accent ?: theme.fg,
+                    onSurface = theme.fg,
+                    onSurfaceVariant = theme.fg2,
+                    surface = theme.menu,
+                    surfaceContainer = theme.menu,
+                    surfaceContainerHigh = theme.menu,
+                    background = theme.background ?: theme.menu,
+                    onBackground = theme.fg,
                 )
+            }
+            // Dark status/navigation bar icons on light themes.
+            SideEffect {
+                WindowCompat.getInsetsController(window, window.decorView).apply {
+                    isAppearanceLightStatusBars = theme.isLight
+                    isAppearanceLightNavigationBars = theme.isLight
+                }
+            }
+            MaterialTheme(colorScheme = scheme) {
+                CompositionLocalProvider(LocalLumen provides theme) {
+                    ProvideTextStyle(
+                        TextStyle(
+                            fontFamily = theme.font,
+                            color = theme.fg,
+                            shadow = if (theme.textShadow) Shadow(androidx.compose.ui.graphics.Color(0x99000000), Offset(0f, 2f), 8f) else null,
+                        ),
+                    ) {
+                        LauncherRoot(
+                            vm = vm,
+                            widgetHost = widgetHost,
+                            widgetManager = widgetManager,
+                            onPickWidget = ::startAddWidget,
+                            onReleaseWidget = { widgetHost.deleteAppWidgetId(it) },
+                            onConfigureWidget = ::openWidgetSettings,
+                        )
+                    }
+                }
             }
         }
     }

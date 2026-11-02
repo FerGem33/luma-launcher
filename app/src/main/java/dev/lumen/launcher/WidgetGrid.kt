@@ -113,7 +113,7 @@ fun WidgetPage(
                 if (widgets.isEmpty()) {
                     Text(
                         "Long-press to add a widget",
-                        color = Color(0xFF777777), fontSize = 15.sp,
+                        color = LocalLumen.current.fg2, fontSize = 15.sp,
                         modifier = Modifier.align(Alignment.Center),
                     )
                 }
@@ -151,13 +151,13 @@ fun WidgetPage(
                     }
                 }
 
-                DropdownMenu(
+                LumenMenu(
                     expanded = menuAt != null,
-                    onDismissRequest = { menuAt = null },
+                    onDismiss = { menuAt = null },
                     offset = menuAt ?: DpOffset.Zero,
                 ) {
-                    DropdownMenuItem(text = { Text("Add widget") }, onClick = { menuAt = null; onAddWidget() })
-                    DropdownMenuItem(text = { Text("Remove page") }, onClick = { menuAt = null; onRemovePage(pageIndex) })
+                    LumenMenuItem("Add widget", LumenIcons.Add, onClick = { menuAt = null; onAddWidget() })
+                    LumenMenuItem("Remove page", LumenIcons.Delete, danger = true, onClick = { menuAt = null; onRemovePage(pageIndex) })
                 }
             }
         }
@@ -212,7 +212,7 @@ private fun WidgetCell(
                     },
                 )
             } else {
-                Text("Widget unavailable", color = Color.Gray, modifier = Modifier.padding(12.dp))
+                Text("Widget unavailable", color = LocalLumen.current.fg2, modifier = Modifier.padding(12.dp))
             }
         }
 
@@ -237,9 +237,9 @@ private fun WidgetCell(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ActionChip("Remove", onRemove)
-                    if (info != null && canReconfigure(ctx, info)) ActionChip("Settings", onConfigure)
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    ActionIcon(LumenIcons.Delete, "Remove widget", onRemove)
+                    if (info != null && canReconfigure(ctx, info)) ActionIcon(LumenIcons.Settings, "Widget settings", onConfigure)
                 }
             }
 
@@ -274,16 +274,19 @@ private fun canReconfigure(ctx: android.content.Context, info: AppWidgetProvider
         info.configure != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
         info.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_RECONFIGURABLE != 0
 
+/** A round icon button shown over a selected widget (which is dimmed, so it is always light-on-dark). */
 @Composable
-private fun ActionChip(label: String, onClick: () -> Unit) {
-    Text(
-        label, color = Color.White, fontSize = 14.sp,
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(Color(0xFF2C2C2E))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-    )
+private fun ActionIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, description: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(Color(0xE61C1C1E))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.material3.Icon(icon, contentDescription = description, tint = Color.White, modifier = Modifier.size(24.dp))
+    }
 }
 
 /**

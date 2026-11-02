@@ -13,6 +13,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -40,6 +42,44 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         private set
     /** Number of grid rows that fit on a widget page; reported by the UI once measured. */
     var gridRows by mutableIntStateOf(6)
+    var themeId by mutableStateOf(prefs.getString("theme", null) ?: LumenThemes.first().id)
+        private set
+    val theme: LumenTheme get() = themeById(themeId)
+
+    fun setTheme(id: String) {
+        themeId = id
+        prefs.edit().putString("theme", id).apply()
+    }
+
+    // ---- custom wallpapers -----------------------------------------------------------------
+
+    private val wallpaperDir = java.io.File(app.filesDir, "wallpapers").apply { mkdirs() }
+    private fun listWallpapers(): List<java.io.File> =
+        wallpaperDir.listFiles { f -> f.extension == "jpg" }?.sortedBy { it.name }.orEmpty()
+
+    /** Images chosen for the Custom theme. */
+    var wallpapers by mutableStateOf(listWallpapers())
+        private set
+
+    /** With several images, one is shown per day. */
+    val currentWallpaper: java.io.File?
+        get() = wallpapers.takeIf { it.isNotEmpty() }?.let { it[(java.time.LocalDate.now().toEpochDay() % it.size).toInt()] }
+
+    fun addWallpapers(uris: List<android.net.Uri>) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val stamp = System.currentTimeMillis()
+            uris.forEachIndexed { i, uri -> importWallpaper(app.contentResolver, uri, wallpaperDir, "w_${stamp}_$i") }
+            val updated = listWallpapers()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { wallpapers = updated }
+        }
+    }
+
+    fun removeWallpaper(file: java.io.File) {
+        file.delete()
+        wallpapers = listWallpapers()
+    }
+
     /** Incremented when the Home button is pressed, so the UI can reset itself. */
     var homeSignal by mutableIntStateOf(0)
         private set

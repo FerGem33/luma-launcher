@@ -36,6 +36,21 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
     (re-opens the widget's settings screen, including Samsung's own "Widget settings" screens).
   - Widgets are clipped to rounded corners, like One UI Home.
   - Long-press empty space for a page menu (add widget, remove page).
+- Themes: predefined looks, each bundling colours, background, typeface, text alignment and clock/date
+  format. Paper, Paper Warm (beige) and Paper Dark (monospace, left-aligned, 24-hour clock; Paper is the
+  default), Graphite (true black, hairline sans, 12-hour clock) and Custom (your own wallpaper, left-aligned
+  sans, 24-hour clock, soft text shadow). A theme applies to the home page, app drawer, widget picker,
+  settings, menus, page dots and the status/navigation bar icons.
+- Settings screen (long-press empty space on the home page): pick a theme from thumbnails drawn in each
+  theme's own fonts and colours. The choice is persisted. For Custom, choose one wallpaper or several from
+  the gallery (with several, one is shown per day); images are copied into the app, downscaled.
+- Bundled typefaces: Outfit and IBM Plex Mono (see `LICENSES-fonts.md`).
+- Popup menus (app actions, home page, widget page) share one flat, themed design: thin outline, no
+  shadow, the theme's font, an icon on every row and a muted red for destructive actions.
+- Selected widgets show round icon buttons (remove, settings) instead of text buttons.
+- App drawer search: results are anchored just above the search field with the best match nearest it, and
+  names that start with the query rank before names that merely contain it.
+- The window shows the system wallpaper, for themes that use it.
 - Home button resets to the home page and closes the drawer, picker and any selection.
 - Pinned apps and widget layout persisted in `SharedPreferences`.
 
