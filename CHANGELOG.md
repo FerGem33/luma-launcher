@@ -51,6 +51,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - App drawer search: results are anchored just above the search field with the best match nearest it, and
   names that start with the query rank before names that merely contain it.
 - The window shows the system wallpaper, for themes that use it.
+- App icon: a four-pointed light with four rays on cream, as an adaptive icon (vector background and
+  foreground, plus a single-colour layer for themed icons on Android 13+).
 - Home button resets to the home page and closes the drawer, picker and any selection.
 - Pinned apps and widget layout persisted in `SharedPreferences`.
 
