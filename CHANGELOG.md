@@ -76,6 +76,11 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Fixed
 
+- App icons could stay on the wrong app: after an uninstall, or while the search list changed, a row
+  reused for another app kept the previous app's icon. Icons are now tied to their app, drawer rows are
+  keyed by app, and the icon cache is cleared when the app list changes.
+- Drawer search now starts from its best match, nearest the search field, instead of keeping the previous
+  scroll position.
 - Widget picker previews could show another widget's preview after searching (rows were reused for
   different widgets and kept the old preview view); rows are now keyed and previews rebuilt per widget.
 - Widgets whose configuration is optional (Digital Wellbeing's Screen time, for one) were thrown away

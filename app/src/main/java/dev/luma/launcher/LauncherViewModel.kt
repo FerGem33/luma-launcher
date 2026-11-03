@@ -131,6 +131,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     fun onHomePressed() { homeSignal++ }
 
     fun refresh() {
+        iconCache.evictAll() // an updated app may have a new icon
         apps = launcherApps.getActivityList(null, me)
             .filter { it.componentName.packageName != app.packageName }
             .map { AppEntry(it.componentName.flattenToString(), it.label.toString(), it.componentName) }

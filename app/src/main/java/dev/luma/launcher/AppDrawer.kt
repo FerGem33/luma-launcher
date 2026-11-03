@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,6 +61,8 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val searching = query.isNotBlank()
+    // A new query starts from its best match (nearest the search field), not wherever the old list was scrolled.
+    LaunchedEffect(query) { listState.scrollToItem(0) }
 
     val rows: List<Row2> = remember(vm.apps, query) {
         if (searching) {
@@ -100,7 +103,13 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
                 // While searching, results are anchored just above the search field, best match nearest it.
                 reverseLayout = searching,
             ) {
-                items(rows.size) { i ->
+                // Keyed by app, so a row stays with its own app when the list shifts (uninstalls, search).
+                items(rows.size, key = { i ->
+                    when (val r = rows[i]) {
+                        is Row2.Header -> "h:${r.letter}"
+                        is Row2.App -> "a:${r.entry.key}"
+                    }
+                }) { i ->
                     when (val r = rows[i]) {
                         is Row2.Header -> Text(
                             r.letter.toString(), color = t.accent ?: t.fg2, fontSize = 14.sp,
