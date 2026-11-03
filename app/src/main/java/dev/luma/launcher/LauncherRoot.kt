@@ -346,10 +346,11 @@ private fun PinnedItem(
     val by by rememberUpdatedState(onReorderBy)
     val end by rememberUpdatedState(onReorderEnd)
     Box(modifier.fillMaxWidth()) {
-        Text(
-            if (t.list.lowercase) entry.label.lowercase() else entry.label,
+        AppNameRow(
+            entry, vm,
+            label = if (t.list.lowercase) entry.label.lowercase() else entry.label,
             color = if (pressed) (t.accent ?: t.fg.copy(alpha = 0.5f)) else t.fg,
-            fontSize = t.list.size, fontWeight = t.list.weight, textAlign = t.align.text, maxLines = 1,
+            fontSize = t.list.size, fontWeight = t.list.weight, align = t.align,
             modifier = Modifier
                 .fillMaxWidth()
                 .pointerInput(entry.key) {

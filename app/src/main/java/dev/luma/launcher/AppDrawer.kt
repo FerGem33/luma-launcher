@@ -147,9 +147,10 @@ private fun DrawerItem(entry: AppEntry, vm: LauncherViewModel, onLaunch: (AppEnt
     val t = LocalLuma.current
     var menu by remember { mutableStateOf(false) }
     Box {
-        Text(
-            if (t.list.lowercase) entry.label.lowercase() else entry.label,
-            color = t.fg, fontSize = 22.sp, fontWeight = t.list.weight, maxLines = 1, textAlign = t.align.text,
+        AppNameRow(
+            entry, vm,
+            label = if (t.list.lowercase) entry.label.lowercase() else entry.label,
+            color = t.fg, fontSize = 22.sp, fontWeight = t.list.weight, align = t.align,
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(onClick = { onLaunch(entry) }, onLongClick = { menu = true })

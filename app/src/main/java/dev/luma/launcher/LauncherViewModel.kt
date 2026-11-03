@@ -14,6 +14,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -21,6 +23,7 @@ import org.json.JSONObject
 data class AppEntry(val key: String, val label: String, val component: ComponentName)
 
 const val GRID_COLS = 4
+private const val ICON_PX = 144
 
 /** A widget placed on a widget page's grid, in cell units. */
 data class WidgetItem(val id: Int, val col: Int, val row: Int, val colSpan: Int, val rowSpan: Int) {
@@ -43,16 +46,37 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     /** How many widget pages sit to the left of the home page. */
     var homeIndex by mutableIntStateOf(prefs.getInt("home_index", 0).coerceIn(0, pages.size))
         private set
+    /** Whether app names show their icon (home list and drawer). */
+    var showIcons by mutableStateOf(prefs.getBoolean("show_icons", false))
+        private set
     /** Number of grid rows that fit on a widget page; reported by the UI once measured. */
     var gridRows by mutableIntStateOf(6)
     var themeId by mutableStateOf(prefs.getString("theme", null) ?: LumaThemes.first().id)
         private set
     val theme: LumaTheme get() = themeById(themeId)
 
+    fun updateShowIcons(show: Boolean) {
+        showIcons = show
+        prefs.edit().putBoolean("show_icons", show).apply()
+    }
+
     fun setTheme(id: String) {
         themeId = id
         prefs.edit().putString("theme", id).apply()
     }
+
+    // ---- app icons ---------------------------------------------------------------------------
+
+    private val iconCache = android.util.LruCache<String, androidx.compose.ui.graphics.ImageBitmap>(300)
+
+    fun cachedIcon(entry: AppEntry): androidx.compose.ui.graphics.ImageBitmap? = iconCache.get(entry.key)
+
+    /** Loads (and caches) an app's icon. Call off the main thread. */
+    fun loadIcon(entry: AppEntry): androidx.compose.ui.graphics.ImageBitmap? = cachedIcon(entry) ?: runCatching {
+        app.packageManager.getActivityIcon(entry.component)
+            .toBitmap(ICON_PX, ICON_PX).asImageBitmap()
+            .also { iconCache.put(entry.key, it) }
+    }.getOrNull()
 
     // ---- custom wallpapers -----------------------------------------------------------------
 

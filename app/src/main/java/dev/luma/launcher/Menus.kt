@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Delete
@@ -72,4 +74,6 @@ object LumaIcons {
     val Delete = Icons.Outlined.Delete
     val Info = Icons.Outlined.Info
     val Settings = Icons.Outlined.Settings
+    val Back = Icons.AutoMirrored.Outlined.ArrowBack
+    val Forward = Icons.AutoMirrored.Outlined.KeyboardArrowRight
 }

@@ -1,5 +1,6 @@
 package dev.luma.launcher
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,9 +28,15 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,10 +45,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Full-screen settings. For now: pick one of the predefined themes. */
+private enum class SettingsPage { Menu, Appearance }
+
+/** Full-screen settings: a menu whose first entry leads to the appearance (theme) options. */
 @Composable
 fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
     val t = LocalLuma.current
+    var page by remember { mutableStateOf(SettingsPage.Menu) }
+    // Back steps out of a sub-page first; this handler is closer to the screen than the launcher's own.
+    BackHandler(enabled = page != SettingsPage.Menu) { page = SettingsPage.Menu }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -52,22 +65,92 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
             .navigationBarsPadding(),
     ) {
         Row(Modifier.fillMaxWidth().padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Settings", color = t.fg, fontSize = 22.sp, modifier = Modifier.weight(1f))
+            if (page != SettingsPage.Menu) {
+                Icon(
+                    LumaIcons.Back, contentDescription = "Back", tint = t.fg,
+                    modifier = Modifier.size(28.dp).clip(CircleShape).clickable { page = SettingsPage.Menu },
+                )
+                Spacer(Modifier.width(12.dp))
+            }
+            Text(
+                if (page == SettingsPage.Menu) "Settings" else "Appearance",
+                color = t.fg, fontSize = 22.sp, modifier = Modifier.weight(1f),
+            )
             Text("Close", color = t.fg2, fontSize = 16.sp, modifier = Modifier.clickable(onClick = onClose))
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
-            Text("Theme", color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                LumaThemes.forEach { option ->
-                    ThemeCard(option, selected = option.id == vm.themeId) { vm.setTheme(option.id) }
-                }
-            }
-            if (vm.themeId == CustomTheme.id) {
-                Spacer(Modifier.height(24.dp))
-                WallpaperSection(vm)
+            when (page) {
+                SettingsPage.Menu -> SettingsMenu(vm) { page = it }
+                SettingsPage.Appearance -> AppearanceSettings(vm)
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun SettingsMenu(vm: LauncherViewModel, open: (SettingsPage) -> Unit) {
+    val t = LocalLuma.current
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(t.surface),
+    ) {
+        MenuRow(
+            title = "Appearance",
+            subtitle = themeById(vm.themeId).name,
+            onClick = { open(SettingsPage.Appearance) },
+        ) {
+            Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
+        }
+        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
+        MenuRow(
+            title = "App icons",
+            subtitle = if (vm.showIcons) "Shown next to app names" else "Hidden: names only",
+            onClick = { vm.updateShowIcons(!vm.showIcons) },
+        ) {
+            Switch(
+                checked = vm.showIcons,
+                onCheckedChange = { vm.updateShowIcons(it) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = t.menu,
+                    checkedTrackColor = t.accent ?: t.fg,
+                    checkedBorderColor = Color.Transparent,
+                    uncheckedThumbColor = t.fg2,
+                    uncheckedTrackColor = t.surfaceHigh,
+                    uncheckedBorderColor = t.fg2.copy(alpha = 0.5f),
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MenuRow(title: String, subtitle: String, onClick: () -> Unit, trailing: @Composable () -> Unit) {
+    val t = LocalLuma.current
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = t.fg, fontSize = 18.sp)
+            Text(subtitle, color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
+        }
+        trailing()
+    }
+}
+
+/** Theme choice, and the wallpaper picker for the Custom theme. */
+@Composable
+private fun AppearanceSettings(vm: LauncherViewModel) {
+    val t = LocalLuma.current
+    Text("Theme", color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LumaThemes.forEach { option ->
+            ThemeCard(option, selected = option.id == vm.themeId) { vm.setTheme(option.id) }
+        }
+    }
+    if (vm.themeId == CustomTheme.id) {
+        Spacer(Modifier.height(24.dp))
+        WallpaperSection(vm)
     }
 }
 

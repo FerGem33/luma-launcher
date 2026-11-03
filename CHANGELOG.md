@@ -47,7 +47,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   default), Graphite (true black, hairline sans, 12-hour clock) and Custom (your own wallpaper, left-aligned
   sans, 24-hour clock, soft text shadow). A theme applies to the home page, app drawer, widget picker,
   settings, menus, page dots and the status/navigation bar icons.
-- Settings screen (long-press empty space on the home page): pick a theme from thumbnails drawn in each theme's own fonts and colours. The choice is persisted. For Custom, choose one wallpaper or several from
+- Settings (long-press empty space on the home page) is a menu. Appearance leads to the theme choice:
+  pick a theme from thumbnails drawn in each theme's own fonts and colours. The choice is persisted. For Custom, choose one wallpaper or several from
   the gallery (with several, one is shown per day); images are copied into the app, downscaled.
 - Bundled typefaces: Outfit and IBM Plex Mono (see `LICENSES-fonts.md`).
 - Popup menus (app actions, home page, widget page) share one flat, themed design: thin outline, no
@@ -58,6 +59,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - The window shows the system wallpaper, for themes that use it.
 - App icon: a four-pointed light with four rays on cream, as an adaptive icon (vector background and
   foreground, plus a single-colour layer for themed icons on Android 13+).
+- App icons: a setting (off by default) that shows each app's icon beside its name in the home list and
+  the drawer, on the side the theme aligns its text to.
 - Home button resets to the home page and closes the drawer, picker and any selection.
 - Pinned apps and widget layout persisted in `SharedPreferences`.
 
