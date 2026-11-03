@@ -1,6 +1,6 @@
 @file:OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
 
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -54,10 +54,10 @@ class ListStyle(
 )
 
 /**
- * Everything that makes up Lumen's look. A theme is a preset of these values; the settings screen picks
- * one. Keeping them together means a new preset is one more entry in [LumenThemes].
+ * Everything that makes up Luma's look. A theme is a preset of these values; the settings screen picks
+ * one. Keeping them together means a new preset is one more entry in [LumaThemes].
  */
-class LumenTheme(
+class LumaTheme(
     val id: String,
     val name: String,
     val tagline: String,
@@ -102,7 +102,7 @@ private val PlexMono = FontFamily(
 private fun paper(
     id: String, name: String, tagline: String,
     bg: Long, fg: Long, fg2: Long, accent: Long, surface: Long, surfaceHigh: Long, menu: Long, isLight: Boolean,
-) = LumenTheme(
+) = LumaTheme(
     id = id, name = name, tagline = tagline,
     background = Color(bg), scrim = 0f,
     fg = Color(fg), fg2 = Color(fg2), accent = Color(accent),
@@ -139,7 +139,7 @@ val PaperDarkTheme = paper(
 )
 
 /** True black, left-aligned, hairline type. */
-val GraphiteTheme = LumenTheme(
+val GraphiteTheme = LumaTheme(
     id = "graphite", name = "Graphite", tagline = "True black, hairline type",
     background = Color.Black, scrim = 0f,
     fg = Color.White, fg2 = Color(0xFF8C8C8C), accent = null,
@@ -159,7 +159,7 @@ val GraphiteTheme = LumenTheme(
  * Your own wallpaper (one image, or a collection shown one per day) under a dimming scrim, falling back to
  * the system wallpaper. Meant to become the most configurable theme.
  */
-val CustomTheme = LumenTheme(
+val CustomTheme = LumaTheme(
     id = "custom", name = "Custom", tagline = "Your wallpaper, your choice",
     background = null, scrim = 0.35f,
     fg = Color.White, fg2 = Color(0xCCFFFFFF), accent = null,
@@ -177,10 +177,10 @@ val CustomTheme = LumenTheme(
 )
 
 /** The presets offered in settings, in display order. The first is the default. */
-val LumenThemes = listOf(PaperTheme, PaperWarmTheme, PaperDarkTheme, GraphiteTheme, CustomTheme)
+val LumaThemes = listOf(PaperTheme, PaperWarmTheme, PaperDarkTheme, GraphiteTheme, CustomTheme)
 
-fun themeById(id: String?): LumenTheme =
+fun themeById(id: String?): LumaTheme =
     // "dusk" was the name of the theme that became Custom.
-    LumenThemes.firstOrNull { it.id == (if (id == "dusk") "custom" else id) } ?: LumenThemes.first()
+    LumaThemes.firstOrNull { it.id == (if (id == "dusk") "custom" else id) } ?: LumaThemes.first()
 
-val LocalLumen = staticCompositionLocalOf { PaperTheme }
+val LocalLuma = staticCompositionLocalOf { PaperTheme }

@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import android.app.Activity
 import android.appwidget.AppWidgetHost
@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             MaterialTheme(colorScheme = scheme) {
-                CompositionLocalProvider(LocalLumen provides theme) {
+                CompositionLocalProvider(LocalLuma provides theme) {
                     ProvideTextStyle(
                         TextStyle(
                             fontFamily = theme.font,

@@ -14,7 +14,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.Lumen">
+        android:theme="@style/Theme.Luma">
 
         <activity
             android:name=".MainActivity"

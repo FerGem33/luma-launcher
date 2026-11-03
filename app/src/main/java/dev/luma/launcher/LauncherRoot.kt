@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
@@ -86,7 +86,7 @@ fun LauncherRoot(
     var drawerOpen by remember { mutableStateOf(false) }
     var pickerForPage by remember { mutableStateOf<Int?>(null) }
     var settingsOpen by remember { mutableStateOf(false) }
-    val theme = LocalLumen.current
+    val theme = LocalLuma.current
 
     LaunchedEffect(vm.homeSignal) {
         drawerOpen = false
@@ -195,7 +195,7 @@ fun LauncherRoot(
 
 @Composable
 private fun HomePage(vm: LauncherViewModel, onOpenSettings: () -> Unit) {
-    val t = LocalLumen.current
+    val t = LocalLuma.current
     val density = LocalDensity.current
     val pinnedApps = remember(vm.pinned, vm.apps) {
         val byKey = vm.apps.associateBy { it.key }
@@ -231,19 +231,19 @@ private fun HomePage(vm: LauncherViewModel, onOpenSettings: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
             }
         }
-        LumenMenu(
+        LumaMenu(
             expanded = pageMenu != null,
             onDismiss = { pageMenu = null },
             offset = pageMenu ?: DpOffset.Zero,
         ) {
-            LumenMenuItem("Settings", LumenIcons.Settings, onClick = { pageMenu = null; onOpenSettings() })
+            LumaMenuItem("Settings", LumaIcons.Settings, onClick = { pageMenu = null; onOpenSettings() })
         }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PinnedItem(entry: AppEntry, vm: LauncherViewModel, t: LumenTheme) {
+private fun PinnedItem(entry: AppEntry, vm: LauncherViewModel, t: LumaTheme) {
     var menu by remember { mutableStateOf(false) }
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
@@ -270,7 +270,7 @@ private fun PinnedItem(entry: AppEntry, vm: LauncherViewModel, t: LumenTheme) {
 }
 
 @Composable
-private fun Clock(t: LumenTheme) {
+private fun Clock(t: LumaTheme) {
     val now by produceState(LocalDateTime.now()) {
         while (true) {
             value = LocalDateTime.now()
@@ -330,14 +330,14 @@ private fun Clock(t: LumenTheme) {
 
 @Composable
 fun AppActionsMenu(expanded: Boolean, onDismiss: () -> Unit, pinned: Boolean, entry: AppEntry, vm: LauncherViewModel) {
-    LumenMenu(expanded, onDismiss) {
-        LumenMenuItem(
+    LumaMenu(expanded, onDismiss) {
+        LumaMenuItem(
             if (pinned) "Unpin from home" else "Pin to home",
-            if (pinned) LumenIcons.Unpin else LumenIcons.Add,
+            if (pinned) LumaIcons.Unpin else LumaIcons.Add,
             onClick = { vm.togglePin(entry); onDismiss() },
         )
-        LumenMenuItem("App info", LumenIcons.Info, onClick = { vm.showAppInfo(entry); onDismiss() })
-        LumenMenuItem("Uninstall", LumenIcons.Delete, danger = true, onClick = { vm.uninstall(entry); onDismiss() })
+        LumaMenuItem("App info", LumaIcons.Info, onClick = { vm.showAppInfo(entry); onDismiss() })
+        LumaMenuItem("Uninstall", LumaIcons.Delete, danger = true, onClick = { vm.uninstall(entry); onDismiss() })
     }
 }
 
@@ -356,12 +356,12 @@ private fun PageIndicator(count: Int, current: Int, onSelect: (Int) -> Unit, onA
                     .padding(horizontal = 6.dp)
                     .size(if (i == current) 9.dp else 7.dp)
                     .clip(CircleShape)
-                    .background(if (i == current) LocalLumen.current.fg else LocalLumen.current.fg2.copy(alpha = 0.5f))
+                    .background(if (i == current) LocalLuma.current.fg else LocalLuma.current.fg2.copy(alpha = 0.5f))
                     .clickable { onSelect(i) },
             )
         }
         Text(
-            "+", color = LocalLumen.current.fg2, fontSize = 18.sp,
+            "+", color = LocalLuma.current.fg2, fontSize = 18.sp,
             modifier = Modifier.clickable(onClick = onAddPage).padding(horizontal = 10.dp),
         )
     }

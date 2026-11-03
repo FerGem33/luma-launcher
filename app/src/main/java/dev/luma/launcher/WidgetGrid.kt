@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
@@ -113,7 +113,7 @@ fun WidgetPage(
                 if (widgets.isEmpty()) {
                     Text(
                         "Long-press to add a widget",
-                        color = LocalLumen.current.fg2, fontSize = 15.sp,
+                        color = LocalLuma.current.fg2, fontSize = 15.sp,
                         modifier = Modifier.align(Alignment.Center),
                     )
                 }
@@ -151,13 +151,13 @@ fun WidgetPage(
                     }
                 }
 
-                LumenMenu(
+                LumaMenu(
                     expanded = menuAt != null,
                     onDismiss = { menuAt = null },
                     offset = menuAt ?: DpOffset.Zero,
                 ) {
-                    LumenMenuItem("Add widget", LumenIcons.Add, onClick = { menuAt = null; onAddWidget() })
-                    LumenMenuItem("Remove page", LumenIcons.Delete, danger = true, onClick = { menuAt = null; onRemovePage(pageIndex) })
+                    LumaMenuItem("Add widget", LumaIcons.Add, onClick = { menuAt = null; onAddWidget() })
+                    LumaMenuItem("Remove page", LumaIcons.Delete, danger = true, onClick = { menuAt = null; onRemovePage(pageIndex) })
                 }
             }
         }
@@ -212,7 +212,7 @@ private fun WidgetCell(
                     },
                 )
             } else {
-                Text("Widget unavailable", color = LocalLumen.current.fg2, modifier = Modifier.padding(12.dp))
+                Text("Widget unavailable", color = LocalLuma.current.fg2, modifier = Modifier.padding(12.dp))
             }
         }
 
@@ -238,8 +238,8 @@ private fun WidgetCell(
                 contentAlignment = Alignment.Center,
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    ActionIcon(LumenIcons.Delete, "Remove widget", onRemove)
-                    if (info != null && canReconfigure(ctx, info)) ActionIcon(LumenIcons.Settings, "Widget settings", onConfigure)
+                    ActionIcon(LumaIcons.Delete, "Remove widget", onRemove)
+                    if (info != null && canReconfigure(ctx, info)) ActionIcon(LumaIcons.Settings, "Widget settings", onConfigure)
                 }
             }
 

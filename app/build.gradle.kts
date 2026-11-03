@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.lumen.launcher"
+    namespace = "dev.luma.launcher"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "dev.lumen.launcher"
+        applicationId = "dev.luma.launcher"
         minSdk = 29
         targetSdk = 36
         versionCode = 1

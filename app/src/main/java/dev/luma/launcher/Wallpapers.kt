@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

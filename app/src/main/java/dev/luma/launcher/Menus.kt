@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
@@ -25,17 +25,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Lumen's popup menu: flat (no shadow), a thin outline, the theme's own surface and font, and an icon
+ * Luma's popup menu: flat (no shadow), a thin outline, the theme's own surface and font, and an icon
  * on every row.
  */
 @Composable
-fun LumenMenu(
+fun LumaMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
     offset: DpOffset = DpOffset.Zero,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val t = LocalLumen.current
+    val t = LocalLuma.current
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
@@ -50,8 +50,8 @@ fun LumenMenu(
 }
 
 @Composable
-fun LumenMenuItem(label: String, icon: ImageVector, onClick: () -> Unit, danger: Boolean = false) {
-    val t = LocalLumen.current
+fun LumaMenuItem(label: String, icon: ImageVector, onClick: () -> Unit, danger: Boolean = false) {
+    val t = LocalLuma.current
     val color = when {
         danger && t.isLight -> Color(0xFFB3463C)
         danger -> Color(0xFFE48A80)
@@ -66,7 +66,7 @@ fun LumenMenuItem(label: String, icon: ImageVector, onClick: () -> Unit, danger:
 }
 
 /** Icons used by menus and widget actions, in one place. */
-object LumenIcons {
+object LumaIcons {
     val Add = Icons.Outlined.Add
     val Unpin = Icons.Outlined.Clear
     val Delete = Icons.Outlined.Delete

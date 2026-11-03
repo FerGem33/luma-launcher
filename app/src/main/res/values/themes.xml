@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- The window shows the system wallpaper; themes that want a solid background draw it themselves. -->
-    <style name="Theme.Lumen" parent="android:Theme.Material.Wallpaper.NoTitleBar">
+    <style name="Theme.Luma" parent="android:Theme.Material.Wallpaper.NoTitleBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:enforceNavigationBarContrast">false</item>

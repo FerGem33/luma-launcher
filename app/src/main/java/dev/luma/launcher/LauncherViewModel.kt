@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import android.app.Application
 import android.content.ComponentName
@@ -29,7 +29,7 @@ data class WidgetItem(val id: Int, val col: Int, val row: Int, val colSpan: Int,
 }
 
 class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
-    private val prefs = app.getSharedPreferences("lumen", Context.MODE_PRIVATE)
+    private val prefs = app.getSharedPreferences("luma", Context.MODE_PRIVATE)
     private val launcherApps = app.getSystemService(LauncherApps::class.java)
     private val me: UserHandle = Process.myUserHandle()
 
@@ -42,9 +42,9 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         private set
     /** Number of grid rows that fit on a widget page; reported by the UI once measured. */
     var gridRows by mutableIntStateOf(6)
-    var themeId by mutableStateOf(prefs.getString("theme", null) ?: LumenThemes.first().id)
+    var themeId by mutableStateOf(prefs.getString("theme", null) ?: LumaThemes.first().id)
         private set
-    val theme: LumenTheme get() = themeById(themeId)
+    val theme: LumaTheme get() = themeById(themeId)
 
     fun setTheme(id: String) {
         themeId = id

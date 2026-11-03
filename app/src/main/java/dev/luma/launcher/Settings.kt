@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.sp
 /** Full-screen settings. For now: pick one of the predefined themes. */
 @Composable
 fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
-    val t = LocalLumen.current
+    val t = LocalLuma.current
     Column(
         Modifier
             .fillMaxSize()
@@ -58,7 +58,7 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             Text("Theme", color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                LumenThemes.forEach { option ->
+                LumaThemes.forEach { option ->
                     ThemeCard(option, selected = option.id == vm.themeId) { vm.setTheme(option.id) }
                 }
             }
@@ -72,8 +72,8 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
 }
 
 @Composable
-private fun ThemeCard(option: LumenTheme, selected: Boolean, onClick: () -> Unit) {
-    val t = LocalLumen.current
+private fun ThemeCard(option: LumaTheme, selected: Boolean, onClick: () -> Unit) {
+    val t = LocalLuma.current
     val shape = RoundedCornerShape(20.dp)
     Row(
         Modifier
@@ -96,7 +96,7 @@ private fun ThemeCard(option: LumenTheme, selected: Boolean, onClick: () -> Unit
 
 /** A tiny home page drawn with the theme's own fonts, colours and alignment. */
 @Composable
-private fun ThemeThumbnail(o: LumenTheme) {
+private fun ThemeThumbnail(o: LumaTheme) {
     Box(
         Modifier
             .size(72.dp, 128.dp)
@@ -124,7 +124,7 @@ private fun ThemeThumbnail(o: LumenTheme) {
 /** Wallpaper choice for the Custom theme: one image, or a collection shown one per day. */
 @Composable
 private fun WallpaperSection(vm: LauncherViewModel) {
-    val t = LocalLumen.current
+    val t = LocalLuma.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(12)) { uris ->
         vm.addWallpapers(uris)
     }
@@ -142,7 +142,7 @@ private fun WallpaperSection(vm: LauncherViewModel) {
                 .clickable { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(LumenIcons.Add, contentDescription = "Add images", tint = t.fg, modifier = Modifier.size(28.dp))
+            Icon(LumaIcons.Add, contentDescription = "Add images", tint = t.fg, modifier = Modifier.size(28.dp))
         }
     }
     Text(
@@ -155,7 +155,7 @@ private fun WallpaperSection(vm: LauncherViewModel) {
 
 @Composable
 private fun WallpaperThumb(file: java.io.File, onRemove: () -> Unit) {
-    val t = LocalLumen.current
+    val t = LocalLuma.current
     val image = rememberImage(file, 400)
     Box(Modifier.size(72.dp, 128.dp).clip(RoundedCornerShape(14.dp)).background(t.surfaceHigh)) {
         if (image != null) {
@@ -171,7 +171,7 @@ private fun WallpaperThumb(file: java.io.File, onRemove: () -> Unit) {
                 .clickable(onClick = onRemove),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(LumenIcons.Unpin, contentDescription = "Remove image", tint = Color.White, modifier = Modifier.size(16.dp))
+            Icon(LumaIcons.Unpin, contentDescription = "Remove image", tint = Color.White, modifier = Modifier.size(16.dp))
         }
     }
 }

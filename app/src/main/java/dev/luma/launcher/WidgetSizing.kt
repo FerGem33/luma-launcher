@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager

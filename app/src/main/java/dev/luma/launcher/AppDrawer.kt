@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -55,7 +55,7 @@ private fun letterOf(label: String): Char =
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -> Unit) {
-    val t = LocalLumen.current
+    val t = LocalLuma.current
     var query by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -144,7 +144,7 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DrawerItem(entry: AppEntry, vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit) {
-    val t = LocalLumen.current
+    val t = LocalLuma.current
     var menu by remember { mutableStateOf(false) }
     Box {
         Text(
@@ -184,6 +184,6 @@ private fun AlphabetBar(letters: List<Char>, onLetter: (Char) -> Unit) {
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        letters.forEach { Text(it.toString(), color = LocalLumen.current.fg2, fontSize = 11.sp) }
+        letters.forEach { Text(it.toString(), color = LocalLuma.current.fg2, fontSize = 11.sp) }
     }
 }

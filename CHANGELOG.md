@@ -58,6 +58,9 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Changed
 
+- The app is renamed from Lumen to Luma: app label, application id (`dev.luma.launcher`), source package,
+  code identifiers and preferences file. The new id installs as a separate app, so pinned apps, widgets,
+  the chosen theme and wallpapers from a Lumen install are not carried over.
 - Widget layout is stored in grid cells (`pages_v2`) instead of full-width heights.
   Widgets added with the earlier list layout are released on first launch and must be re-added.
 

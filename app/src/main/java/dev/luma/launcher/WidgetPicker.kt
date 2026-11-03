@@ -1,4 +1,4 @@
-package dev.lumen.launcher
+package dev.luma.launcher
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
@@ -57,7 +57,7 @@ import androidx.core.graphics.drawable.toBitmap
 @Composable
 fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
-    val t = LocalLumen.current
+    val t = LocalLuma.current
     val groups = remember {
         val pm = ctx.packageManager
         AppWidgetManager.getInstance(ctx).installedProviders
@@ -140,7 +140,7 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
 @Composable
 private fun WidgetCard(w: PickerWidget, onPick: (AppWidgetProviderInfo, Int?, Int?) -> Unit) {
     val ctx = LocalContext.current
-    val t = LocalLumen.current
+    val t = LocalLuma.current
     val sizes: List<SizeVariant?> = w.variants.ifEmpty { listOf(null) }
     Column(
         Modifier
@@ -201,7 +201,7 @@ private fun WidgetPreview(info: AppWidgetProviderInfo, variant: SizeVariant?, co
     }
 
     Box(
-        Modifier.size(PreviewCell * tileCols, PreviewCell * tileRows).clip(RoundedCornerShape(12.dp)).background(LocalLumen.current.surfaceHigh),
+        Modifier.size(PreviewCell * tileCols, PreviewCell * tileRows).clip(RoundedCornerShape(12.dp)).background(LocalLuma.current.surfaceHigh),
         contentAlignment = Alignment.Center,
     ) {
         when {
