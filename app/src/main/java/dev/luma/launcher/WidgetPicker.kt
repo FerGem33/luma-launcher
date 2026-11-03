@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
@@ -150,11 +151,12 @@ fun WidgetPicker(
         )
         LazyColumn(Modifier.weight(1f)) {
             filtered.forEach { (app, widgets) ->
-                item {
+                item(key = "app:$app") {
                     Text(app, color = t.fg2, fontSize = 14.sp,
                         modifier = Modifier.padding(start = 24.dp, top = 20.dp, bottom = 6.dp))
                 }
-                items(widgets) { w ->
+                // Keyed, so a row keeps its own widget (and preview) as the search narrows or widens the list.
+                items(widgets, key = { it.info.provider.flattenToString() }) { w ->
                     WidgetCard(
                         w, onPick,
                         onDragStart = { setDrag(it) },
@@ -211,6 +213,7 @@ private fun WidgetCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             sizes.forEach { v ->
+              key(v?.cols, v?.rows) {
                 val (cols, rows) = v?.let { it.cols to it.rows } ?: defaultSpan(ctx, w.info)
                 var rootPos by remember { mutableStateOf(Offset.Zero) }
                 Column(
@@ -231,6 +234,7 @@ private fun WidgetCard(
                     WidgetPreview(w.info, v, cols, rows)
                     Text("$cols×$rows", color = t.fg2, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
                 }
+              }
             }
         }
     }
@@ -275,6 +279,7 @@ private fun WidgetPreview(info: AppWidgetProviderInfo, variant: SizeVariant?, co
                 val w = (gridCellPx(ctx) * cols).toInt()
                 val h = (gridCellPx(ctx) * rows).toInt()
                 val scale = minOf(boxW / w, boxH / h, 1f)
+                key(live) {
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
                     factory = { c ->
@@ -294,6 +299,7 @@ private fun WidgetPreview(info: AppWidgetProviderInfo, variant: SizeVariant?, co
                         }
                     },
                 )
+                }
             }
             image != null -> Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             icon != null -> Image(icon, null, Modifier.size(40.dp))

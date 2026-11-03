@@ -76,6 +76,12 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Fixed
 
+- Widget picker previews could show another widget's preview after searching (rows were reused for
+  different widgets and kept the old preview view); rows are now keyed and previews rebuilt per widget.
+- Widgets whose configuration is optional (Digital Wellbeing's Screen time, for one) were thrown away
+  after their settings screen: Samsung's screen reports "cancelled" even when you tap Save. Such widgets
+  are now kept whatever the screen reports.
+- Removing a widget page that has widgets now asks first, since its widgets are removed with it.
 - Samsung widgets (Weather, Clock/Alarm, ...) now get the same private host options One UI Home
   passes (grid span, size code, style), so their settings screens offer every choice, such as
   Weather's daily/hourly forecast. Options are also pushed with a direct `updateAppWidgetOptions` call,

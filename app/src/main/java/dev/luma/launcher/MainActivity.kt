@@ -114,7 +114,12 @@ class MainActivity : ComponentActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_CONFIGURE) {
-            if (resultCode == Activity.RESULT_OK) finishPending() else cancelPending()
+            // Some widgets (Samsung's, for one) report "cancelled" even after the user saved their settings.
+            // A widget whose configuration is optional works without it, so it is kept either way.
+            val optional = widgetManager.getAppWidgetInfo(pendingId)?.let {
+                it.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_CONFIGURATION_OPTIONAL != 0
+            } == true
+            if (resultCode == Activity.RESULT_OK || optional) finishPending() else cancelPending()
         }
     }
 

@@ -33,7 +33,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -100,9 +102,33 @@ fun WidgetPage(
     var dragId by remember { mutableStateOf<Int?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var resizing by remember { mutableStateOf(false) }
+    var confirmRemove by remember { mutableStateOf(false) }
 
     LaunchedEffect(vm.homeSignal) { selectedId = null; menuAt = null }
     BackHandler(enabled = selectedId != null) { selectedId = null }
+
+    if (confirmRemove) {
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            containerColor = t.menu,
+            titleContentColor = t.fg,
+            textContentColor = t.fg2,
+            title = { Text("Remove this page?") },
+            text = {
+                Text(
+                    if (widgets.size == 1) "Its widget will be removed too." else "Its ${widgets.size} widgets will be removed too.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { confirmRemove = false; onRemovePage(pageIndex) }) {
+                    Text("Remove", color = Color(0xFFE5534B))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemove = false }) { Text("Cancel", color = t.fg) }
+            },
+        )
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding()) {
         val availH = maxHeight
@@ -214,7 +240,11 @@ fun WidgetPage(
                     offset = menuAt ?: DpOffset.Zero,
                 ) {
                     LumaMenuItem("Add widget", LumaIcons.Add, onClick = { menuAt = null; onAddWidget() })
-                    LumaMenuItem("Remove page", LumaIcons.Delete, danger = true, onClick = { menuAt = null; onRemovePage(pageIndex) })
+                    LumaMenuItem("Remove page", LumaIcons.Delete, danger = true, onClick = {
+                        menuAt = null
+                        // An empty page goes at once; one with widgets asks first, since the widgets go with it.
+                        if (widgets.isEmpty()) onRemovePage(pageIndex) else confirmRemove = true
+                    })
                 }
             }
         }
