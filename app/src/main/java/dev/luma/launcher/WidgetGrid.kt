@@ -6,12 +6,17 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,41 +33,52 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
-import kotlin.math.abs
+import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlin.math.tanh
 
 /**
  * A widget page: a fixed [GRID_COLS]-column grid with square cells.
  *  - long-press empty space: page menu (add widget / remove page)
- *  - long-press a widget: select it; keep dragging to move it (snaps to cells)
- *  - selected widget: edge handles resize it, plus Remove / Settings actions
+ *  - long-press a widget: select it; keep dragging to move it (snaps to cells, with a grid shown)
+ *  - selected widget: drag its border to resize (elastic, snaps to cells), plus remove / settings
+ *  - [dropPreview]: the spot a widget dragged out of the picker would take
  */
 @Composable
 fun WidgetPage(
@@ -70,16 +86,20 @@ fun WidgetPage(
     pageIndex: Int,
     widgetHost: AppWidgetHost,
     widgetManager: AppWidgetManager,
+    dropPreview: DropPreview?,
+    onGeometry: (GridGeometry) -> Unit,
     onAddWidget: () -> Unit,
     onRemovePage: (Int) -> Unit,
     onConfigureWidget: (Int) -> Unit,
 ) {
     val widgets = vm.pages.getOrNull(pageIndex) ?: return
+    val t = LocalLuma.current
     val density = LocalDensity.current
     var selectedId by remember { mutableStateOf<Int?>(null) }
     var menuAt by remember { mutableStateOf<DpOffset?>(null) }
     var dragId by remember { mutableStateOf<Int?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var resizing by remember { mutableStateOf(false) }
 
     LaunchedEffect(vm.homeSignal) { selectedId = null; menuAt = null }
     BackHandler(enabled = selectedId != null) { selectedId = null }
@@ -92,6 +112,19 @@ fun WidgetPage(
         val rows = max(1, floor(with(density) { (availH - 8.dp).toPx() } / cellPx).toInt())
         LaunchedEffect(rows) { vm.gridRows = rows }
 
+        // Where a widget being moved would land (None while nothing is moving).
+        val movePreview = dragId?.let { id ->
+            widgets.firstOrNull { it.id == id }?.let { item ->
+                val col = ((item.col * cellPx + dragOffset.x) / cellPx).roundToInt()
+                val row = ((item.row * cellPx + dragOffset.y) / cellPx).roundToInt()
+                DropPreview(col, row, item.colSpan, item.rowSpan, vm.canPlace(pageIndex, item.copy(col = col, row = row)))
+            }
+        }
+        val target = dropPreview ?: movePreview
+        val gridAlpha by animateFloatAsState(if (target != null || resizing) 1f else 0f, label = "gridAlpha")
+        val good = t.accent ?: t.fg
+        val bad = Color(0xFFE5534B)
+
         // The (non-scrolling) vertical scroll container only exists so the swipe-up-for-drawer
         // gesture reaches the nested-scroll connection in LauncherRoot.
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -100,6 +133,23 @@ fun WidgetPage(
                     .height(availH)
                     .fillMaxWidth()
                     .padding(horizontal = margin)
+                    .onGloballyPositioned { onGeometry(GridGeometry(it.boundsInRoot(), cellPx)) }
+                    .drawBehind {
+                        // Faint cell outlines while a widget is being moved, resized or dragged in.
+                        if (gridAlpha > 0f) {
+                            val inset = 5.dp.toPx()
+                            val color = t.fg.copy(alpha = 0.18f * gridAlpha)
+                            for (r in 0 until rows) for (c in 0 until GRID_COLS) {
+                                drawRoundRect(
+                                    color,
+                                    topLeft = Offset(c * cellPx + inset, r * cellPx + inset),
+                                    size = Size(cellPx - 2 * inset, cellPx - 2 * inset),
+                                    cornerRadius = CornerRadius(14.dp.toPx()),
+                                    style = Stroke(1.5.dp.toPx()),
+                                )
+                            }
+                        }
+                    }
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = { selectedId = null },
@@ -110,14 +160,6 @@ fun WidgetPage(
                         )
                     },
             ) {
-                if (widgets.isEmpty()) {
-                    Text(
-                        "Long-press to add a widget",
-                        color = LocalLuma.current.fg2, fontSize = 15.sp,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-
                 widgets.forEach { item ->
                     key(item.id) {
                         val info = remember(item.id) { widgetManager.getAppWidgetInfo(item.id) }
@@ -141,6 +183,7 @@ fun WidgetPage(
                                 dragOffset = Offset.Zero
                             },
                             onResize = { new -> vm.tryUpdate(pageIndex, new) },
+                            onResizeActive = { resizing = it },
                             onRemove = {
                                 selectedId = null
                                 vm.removeWidget(pageIndex, item.id)
@@ -150,6 +193,20 @@ fun WidgetPage(
                         )
                     }
                 }
+
+                // The cells the dragged widget would take: tinted when free, red when blocked.
+                Box(
+                    Modifier.fillMaxSize().zIndex(2f).drawBehind {
+                        target?.let { p ->
+                            val inset = 5.dp.toPx()
+                            val color = if (p.valid) good else bad
+                            val topLeft = Offset(p.col * cellPx + inset, p.row * cellPx + inset)
+                            val size = Size(p.cols * cellPx - 2 * inset, p.rows * cellPx - 2 * inset)
+                            drawRoundRect(color.copy(alpha = 0.22f), topLeft, size, CornerRadius(18.dp.toPx()))
+                            drawRoundRect(color, topLeft, size, CornerRadius(18.dp.toPx()), style = Stroke(2.dp.toPx()))
+                        }
+                    },
+                )
 
                 LumaMenu(
                     expanded = menuAt != null,
@@ -170,17 +227,17 @@ private fun WidgetCell(
     info: AppWidgetProviderInfo?,
     widgetHost: AppWidgetHost,
     cellPx: Float,
-    cellDp: androidx.compose.ui.unit.Dp,
+    cellDp: Dp,
     selected: Boolean,
     dragOffset: Offset,
     onDragStart: () -> Unit,
     onDragBy: (Offset) -> Unit,
     onDragEnd: (cancelled: Boolean) -> Unit,
     onResize: (WidgetItem) -> Boolean,
+    onResizeActive: (Boolean) -> Unit,
     onRemove: () -> Unit,
     onConfigure: () -> Unit,
 ) {
-    val ctx = androidx.compose.ui.platform.LocalContext.current
     val inset = 4.dp
     val widthDp = (cellDp * item.colSpan - inset * 2).value.toInt()
     val heightDp = (cellDp * item.rowSpan - inset * 2).value.toInt()
@@ -217,57 +274,177 @@ private fun WidgetCell(
         }
 
         if (selected) {
-            val currentDragStart by rememberUpdatedState(onDragStart)
-            val currentDragBy by rememberUpdatedState(onDragBy)
-            val currentDragEnd by rememberUpdatedState(onDragEnd)
-            // Covers the widget (so it stops reacting to touches) and lets you long-press-drag again.
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .clip(shape)
-                    .background(Color(0x66000000))
-                    .border(2.dp, Color.White, shape)
-                    .pointerInput(item.id) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { currentDragStart() },
-                            onDrag = { c, d -> c.consume(); currentDragBy(d) },
-                            onDragEnd = { currentDragEnd(false) },
-                            onDragCancel = { currentDragEnd(true) },
-                        )
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    ActionIcon(LumaIcons.Delete, "Remove widget", onRemove)
-                    if (info != null && canReconfigure(ctx, info)) ActionIcon(LumaIcons.Settings, "Widget settings", onConfigure)
-                }
-            }
-
-            val minW = max(1, ceil(info?.minResizeWidth?.let { it / cellPx } ?: 1f).toInt())
-            val minH = max(1, ceil(info?.minResizeHeight?.let { it / cellPx } ?: 1f).toInt())
-            val mode = info?.resizeMode ?: 0
-            val horizontal = mode and AppWidgetProviderInfo.RESIZE_HORIZONTAL != 0
-            val vertical = mode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0
-
-            if (horizontal) {
-                ResizeHandle(Modifier.align(Alignment.CenterEnd), vertical = false, stepPx = cellPx) { dir ->
-                    item.colSpan + dir >= minW && onResize(item.copy(colSpan = item.colSpan + dir))
-                }
-                ResizeHandle(Modifier.align(Alignment.CenterStart), vertical = false, stepPx = cellPx) { dir ->
-                    item.colSpan - dir >= minW && onResize(item.copy(col = item.col + dir, colSpan = item.colSpan - dir))
-                }
-            }
-            if (vertical) {
-                ResizeHandle(Modifier.align(Alignment.BottomCenter), vertical = true, stepPx = cellPx) { dir ->
-                    item.rowSpan + dir >= minH && onResize(item.copy(rowSpan = item.rowSpan + dir))
-                }
-                ResizeHandle(Modifier.align(Alignment.TopCenter), vertical = true, stepPx = cellPx) { dir ->
-                    item.rowSpan - dir >= minH && onResize(item.copy(row = item.row + dir, rowSpan = item.rowSpan - dir))
-                }
-            }
+            SelectionFrame(
+                item, info, cellPx, shape,
+                onDragStart, onDragBy, onDragEnd, onResize, onResizeActive, onRemove, onConfigure,
+            )
         }
     }
 }
+
+/**
+ * Drawn over a selected widget: a dimming scrim, remove/settings buttons and a border you can grab anywhere
+ * along its edges (or corners) to resize. The border stretches with your finger like a rubber band while the
+ * widget snaps to whole cells, and springs back to the snapped size when you let go. Dragging from the middle
+ * (after a long press) moves the widget.
+ */
+@Composable
+private fun SelectionFrame(
+    item: WidgetItem,
+    info: AppWidgetProviderInfo?,
+    cellPx: Float,
+    shape: RoundedCornerShape,
+    onDragStart: () -> Unit,
+    onDragBy: (Offset) -> Unit,
+    onDragEnd: (cancelled: Boolean) -> Unit,
+    onResize: (WidgetItem) -> Boolean,
+    onResizeActive: (Boolean) -> Unit,
+    onRemove: () -> Unit,
+    onConfigure: () -> Unit,
+) {
+    val ctx = LocalContext.current
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    val currentItem by rememberUpdatedState(item)
+    val currentResize by rememberUpdatedState(onResize)
+    val currentResizeActive by rememberUpdatedState(onResizeActive)
+    val currentDragStart by rememberUpdatedState(onDragStart)
+    val currentDragBy by rememberUpdatedState(onDragBy)
+    val currentDragEnd by rememberUpdatedState(onDragEnd)
+
+    val minW = max(1, ceil(info?.minResizeWidth?.let { it / cellPx } ?: 1f).toInt())
+    val minH = max(1, ceil(info?.minResizeHeight?.let { it / cellPx } ?: 1f).toInt())
+    val mode = info?.resizeMode ?: 0
+    val horizontal = mode and AppWidgetProviderInfo.RESIZE_HORIZONTAL != 0
+    val vertical = mode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0
+    val band = with(density) { 30.dp.toPx() }
+    // The theme's text colour: visible on light and dark pages alike (white would vanish on Paper).
+    val frameColor = LocalLuma.current.fg
+
+    // How far the border is pulled outward from the snapped widget bounds, per edge: left, top, right, bottom.
+    val pull = remember { mutableStateListOf(0f, 0f, 0f, 0f) }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .drawBehind {
+                val left = -pull[0]
+                val top = -pull[1]
+                val right = size.width + pull[2]
+                val bottom = size.height + pull[3]
+                val white = frameColor
+                drawRoundRect(
+                    white, Offset(left, top), Size(right - left, bottom - top),
+                    CornerRadius(16.dp.toPx()), style = Stroke(2.5.dp.toPx()),
+                )
+                // A small pill in the middle of each edge that can be dragged.
+                val long = 28.dp.toPx()
+                val thick = 5.dp.toPx()
+                fun pill(cx: Float, cy: Float, wide: Boolean) {
+                    val w = if (wide) long else thick
+                    val h = if (wide) thick else long
+                    drawRoundRect(white, Offset(cx - w / 2, cy - h / 2), Size(w, h), CornerRadius(thick / 2))
+                }
+                if (horizontal) {
+                    pill(left, (top + bottom) / 2, wide = false)
+                    pill(right, (top + bottom) / 2, wide = false)
+                }
+                if (vertical) {
+                    pill((left + right) / 2, top, wide = true)
+                    pill((left + right) / 2, bottom, wide = true)
+                }
+            }
+            .pointerInput(item.id, horizontal, vertical, cellPx, minW, minH) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    // Handled here: keeps the page behind from also treating this touch as a long press.
+                    down.consume()
+                    val w = size.width
+                    val h = size.height
+                    var zone = 0 // bit per edge: 1 left, 2 top, 4 right, 8 bottom
+                    if (horizontal) {
+                        if (down.position.x < band && down.position.x <= w / 2f) zone = zone or 1
+                        if (down.position.x > w - band && down.position.x > w / 2f) zone = zone or 4
+                    }
+                    if (vertical) {
+                        if (down.position.y < band && down.position.y <= h / 2f) zone = zone or 2
+                        if (down.position.y > h - band && down.position.y > h / 2f) zone = zone or 8
+                    }
+
+                    if (zone != 0) {
+                        // ---- resize: the border follows the finger, the widget snaps to cells ----
+                        currentResizeActive(true)
+                        var cur = currentItem
+                        val applied = IntArray(4)
+                        var total = Offset.Zero
+                        drag(down.id) { change ->
+                            // Read the movement before consuming: consumed changes report none.
+                            total += change.positionChange()
+                            change.consume()
+                            for (e in 0..3) {
+                                if (zone and (1 shl e) == 0) continue
+                                val outward = when (e) { 0 -> -total.x; 2 -> total.x; 1 -> -total.y; else -> total.y }
+                                val wanted = (outward / cellPx).roundToInt()
+                                while (applied[e] < wanted) {
+                                    val next = stepEdge(cur, e, +1, minW, minH) ?: break
+                                    if (!currentResize(next)) break
+                                    cur = next; applied[e]++
+                                }
+                                while (applied[e] > wanted) {
+                                    val next = stepEdge(cur, e, -1, minW, minH) ?: break
+                                    if (!currentResize(next)) break
+                                    cur = next; applied[e]--
+                                }
+                                val residual = outward - applied[e] * cellPx
+                                // Free to follow the finger up to half a cell; beyond that (blocked) it resists.
+                                pull[e] = if (applied[e] == wanted) residual else rubberBand(residual, cellPx * 0.4f)
+                            }
+                        }
+                        currentResizeActive(false)
+                        val from = pull.toList()
+                        scope.launch {
+                            animate(0f, 1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) { f, _ ->
+                                for (e in 0..3) pull[e] = from[e] * (1f - f)
+                            }
+                        }
+                    } else {
+                        // ---- move: long press, then drag ----
+                        val press = awaitLongPressOrCancellation(down.id)
+                        if (press != null) {
+                            currentDragStart()
+                            val finished = drag(press.id) { change ->
+                                val delta = change.positionChange()
+                                change.consume()
+                                currentDragBy(delta)
+                            }
+                            currentDragEnd(!finished)
+                        }
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.fillMaxSize().clip(shape).background(Color(0x66000000)))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            ActionIcon(LumaIcons.Delete, "Remove widget", onRemove)
+            if (info != null && canReconfigure(ctx, info)) ActionIcon(LumaIcons.Settings, "Widget settings", onConfigure)
+        }
+    }
+}
+
+/** One cell of growth ([step] = +1) or shrinkage (-1) on edge [edge] (0 left, 1 top, 2 right, 3 bottom). */
+private fun stepEdge(cur: WidgetItem, edge: Int, step: Int, minW: Int, minH: Int): WidgetItem? {
+    val next = when (edge) {
+        0 -> cur.copy(col = cur.col - step, colSpan = cur.colSpan + step)
+        2 -> cur.copy(colSpan = cur.colSpan + step)
+        1 -> cur.copy(row = cur.row - step, rowSpan = cur.rowSpan + step)
+        else -> cur.copy(rowSpan = cur.rowSpan + step)
+    }
+    return if (step < 0 && (next.colSpan < minW || next.rowSpan < minH)) null else next
+}
+
+/** Like pulling on a rubber band: follows the finger at first, then resists. */
+private fun rubberBand(x: Float, limit: Float): Float = limit * tanh(x / limit)
 
 private fun canReconfigure(ctx: android.content.Context, info: AppWidgetProviderInfo): Boolean =
     samsungConfigureActivity(ctx, info) != null ||
@@ -285,33 +462,6 @@ private fun ActionIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, de
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Icon(icon, contentDescription = description, tint = Color.White, modifier = Modifier.size(24.dp))
-    }
-}
-
-/**
- * Edge handle. Dragging accumulates pixels and calls [onStep] with +1/-1 for every [stepPx] moved
- * along the handle's axis; [onStep] returns whether the change was applied.
- */
-@Composable
-private fun ResizeHandle(modifier: Modifier, vertical: Boolean, stepPx: Float, onStep: (Int) -> Boolean) {
-    val currentOnStep by rememberUpdatedState(onStep)
-    Box(
-        modifier
-            .size(44.dp)
-            .pointerInput(stepPx, vertical) {
-                var acc = 0f
-                detectDragGestures(onDragStart = { acc = 0f }) { change, drag ->
-                    change.consume()
-                    acc += if (vertical) drag.y else drag.x
-                    while (abs(acc) >= stepPx) {
-                        val dir = if (acc > 0) 1 else -1
-                        if (currentOnStep(dir)) acc -= dir * stepPx else { acc = 0f; break }
-                    }
-                }
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(Modifier.size(14.dp).clip(CircleShape).background(Color.White))
+        Icon(icon, contentDescription = description, tint = Color.White, modifier = Modifier.size(24.dp))
     }
 }

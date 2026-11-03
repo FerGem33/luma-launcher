@@ -10,12 +10,15 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 - Initial launcher scaffold (Kotlin, Jetpack Compose, Gradle 9.3.1, AGP 9.1.0; minSdk 29, targetSdk 36).
 - Niagara-style home page: clock and date, with a text-only list of pinned apps.
-  Long-press a pinned app for unpin, app info and uninstall.
+  Long-press a pinned app and drag to reorder the list; long-press and let go without moving for
+  unpin, app info and uninstall.
 - Swipe-up app drawer: alphabetical list with letter headers, a draggable A–Z
   fast-scroll bar, and a bottom search field (the Go key launches the first match).
-- Samsung-style swipeable widget pages hosted with `AppWidgetHost`, with a page
-  indicator and a button to add pages.
+- Samsung-style swipeable widget pages hosted with `AppWidgetHost`. Pages can sit on either side of
+  home: a `+` at each end of the page dots adds one, and the home page's dot is a ring.
 - Widget picker with previews, grouped by app, with a search field that filters by app name or widget name.
+  Tap a widget to add it in the first free spot, or long-press and drag it onto the page behind the
+  picker: the cells it would take are highlighted (red when blocked) and it is added where you let go.
   Handles the bind-permission and widget-configuration flow.
   - Previews use the same sources One UI does: generated previews, preview layouts, static
     images, then the app icon. Samsung preview layouts that need the widget app's own view classes
@@ -29,9 +32,12 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 - Widget grid: each page is a 4-column grid of square cells.
   - New widgets start at their default size and take the first free spot;
     a toast is shown when the page is full.
-  - Long-press a widget to select it; keep dragging to move it (snaps to cells).
-  - A selected widget shows edge handles to resize it in whole cells, within the
-    limits the widget declares (resize direction and minimum size).
+  - Long-press a widget to select it; keep dragging to move it (snaps to cells). A faint grid and the
+    target cells are shown while it moves.
+  - A selected widget has a border you can grab anywhere along its edges or corners to resize it in
+    whole cells, within the limits the widget declares (resize direction and minimum size). The border
+    stretches with your finger like a rubber band, then springs back to the snapped size; the grid is
+    shown while resizing. The border uses the theme's text colour so it shows on light and dark pages.
   - A selected widget offers Remove and, for widgets that support it, Settings
     (re-opens the widget's settings screen, including Samsung's own "Widget settings" screens).
   - Widgets are clipped to rounded corners, like One UI Home.
@@ -41,8 +47,7 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
   default), Graphite (true black, hairline sans, 12-hour clock) and Custom (your own wallpaper, left-aligned
   sans, 24-hour clock, soft text shadow). A theme applies to the home page, app drawer, widget picker,
   settings, menus, page dots and the status/navigation bar icons.
-- Settings screen (long-press empty space on the home page): pick a theme from thumbnails drawn in each
-  theme's own fonts and colours. The choice is persisted. For Custom, choose one wallpaper or several from
+- Settings screen (long-press empty space on the home page): pick a theme from thumbnails drawn in each theme's own fonts and colours. The choice is persisted. For Custom, choose one wallpaper or several from
   the gallery (with several, one is shown per day); images are copied into the app, downscaled.
 - Bundled typefaces: Outfit and IBM Plex Mono (see `LICENSES-fonts.md`).
 - Popup menus (app actions, home page, widget page) share one flat, themed design: thin outline, no
@@ -58,6 +63,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Changed
 
+- The "Long-press to add a widget" hint on empty widget pages is gone; long-press empty space for the
+  page menu.
 - The app is renamed from Lumen to Luma: app label, application id (`dev.luma.launcher`), source package,
   code identifiers and preferences file. The new id installs as a separate app, so pinned apps, widgets,
   the chosen theme and wallpapers from a Lumen install are not carried over.

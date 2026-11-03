@@ -37,8 +37,11 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         private set
     var pinned by mutableStateOf(loadPinned())
         private set
-    /** Widget pages (the home page is separate and always first). */
+    /** Widget pages, in left-to-right order, excluding the home page. */
     var pages by mutableStateOf(loadPages())
+        private set
+    /** How many widget pages sit to the left of the home page. */
+    var homeIndex by mutableIntStateOf(prefs.getInt("home_index", 0).coerceIn(0, pages.size))
         private set
     /** Number of grid rows that fit on a widget page; reported by the UI once measured. */
     var gridRows by mutableIntStateOf(6)
@@ -134,6 +137,12 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         prefs.edit().putString("pinned", JSONArray(pinned).toString()).apply()
     }
 
+    /** Applies a new order to the pinned apps that are currently shown; hidden ones keep their place at the end. */
+    fun reorderPinned(visibleOrder: List<String>) {
+        pinned = visibleOrder + pinned.filter { it !in visibleOrder }
+        prefs.edit().putString("pinned", JSONArray(pinned).toString()).apply()
+    }
+
     private fun loadPinned(): List<String> {
         val arr = JSONArray(prefs.getString("pinned", "[]"))
         return List(arr.length()) { arr.getString(it) }
@@ -141,15 +150,38 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
 
     // ---- widget pages ----------------------------------------------------------------------
 
-    fun addPage(): Int {
-        updatePages(pages + listOf(emptyList()))
-        return pages.size - 1
+    /** Pager index (home included) of the widget page at [widgetPage] in [pages]. */
+    fun pagerIndexOf(widgetPage: Int) = if (widgetPage < homeIndex) widgetPage else widgetPage + 1
+
+    /** Index in [pages] of the page shown at [pagerIndex], or null for the home page. */
+    fun widgetPageAt(pagerIndex: Int): Int? = when {
+        pagerIndex < homeIndex -> pagerIndex
+        pagerIndex == homeIndex -> null
+        else -> pagerIndex - 1
+    }
+
+    /** Adds an empty widget page left or right of home. Returns the pager index of the new page. */
+    fun addPage(left: Boolean): Int {
+        return if (left) {
+            updatePages(listOf(emptyList<WidgetItem>()) + pages)
+            updateHomeIndex(homeIndex + 1)
+            0
+        } else {
+            updatePages(pages + listOf(emptyList()))
+            pages.size
+        }
+    }
+
+    private fun updateHomeIndex(n: Int) {
+        homeIndex = n
+        prefs.edit().putInt("home_index", n).apply()
     }
 
     /** Returns widget ids that were on the page so the caller can release them from the host. */
     fun removePage(index: Int): List<Int> {
         val removed = pages.getOrNull(index)?.map { it.id }.orEmpty()
         updatePages(pages.filterIndexed { i, _ -> i != index })
+        if (index < homeIndex) updateHomeIndex(homeIndex - 1)
         return removed
     }
 
@@ -166,6 +198,26 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
             }
         }
         return false
+    }
+
+    /** Whether [candidate] fits inside the grid on [page] without overlapping another widget. */
+    fun canPlace(page: Int, candidate: WidgetItem): Boolean {
+        val items = pages.getOrNull(page) ?: return false
+        val inside = candidate.col >= 0 && candidate.row >= 0 && candidate.colSpan >= 1 && candidate.rowSpan >= 1 &&
+            candidate.col + candidate.colSpan <= GRID_COLS && candidate.row + candidate.rowSpan <= gridRows
+        return inside && items.none { it.id != candidate.id && it.overlaps(candidate) }
+    }
+
+    /** Places a widget at the given cell if it fits there, otherwise in the first free spot. */
+    fun addWidgetAt(page: Int, id: Int, colSpan: Int, rowSpan: Int, col: Int?, row: Int?): Boolean {
+        if (col != null && row != null) {
+            val candidate = WidgetItem(id, col, row, colSpan.coerceIn(1, GRID_COLS), rowSpan.coerceIn(1, gridRows))
+            if (canPlace(page, candidate)) {
+                updatePages(pages.mapIndexed { i, w -> if (i == page) w + candidate else w })
+                return true
+            }
+        }
+        return addWidget(page, id, colSpan, rowSpan)
     }
 
     /** Moves/resizes a widget if the result stays inside the grid and doesn't overlap others. */

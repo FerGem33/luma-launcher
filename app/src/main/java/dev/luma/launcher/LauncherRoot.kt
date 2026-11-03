@@ -13,10 +13,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -41,7 +40,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.zIndex
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -77,22 +90,37 @@ fun LauncherRoot(
     vm: LauncherViewModel,
     widgetHost: AppWidgetHost,
     widgetManager: AppWidgetManager,
-    onPickWidget: (page: Int, info: AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit,
+    onPickWidget: (page: Int, info: AppWidgetProviderInfo, cols: Int?, rows: Int?, col: Int?, row: Int?) -> Unit,
     onReleaseWidget: (Int) -> Unit,
     onConfigureWidget: (Int) -> Unit,
 ) {
-    val pagerState = rememberPagerState { 1 + vm.pages.size }
+    val pagerState = rememberPagerState(initialPage = vm.homeIndex) { 1 + vm.pages.size }
     val scope = rememberCoroutineScope()
     var drawerOpen by remember { mutableStateOf(false) }
+    // Index (in vm.pages) of the widget page the picker was opened from.
     var pickerForPage by remember { mutableStateOf<Int?>(null) }
+    var pickerDrag by remember { mutableStateOf<PickerDrag?>(null) }
+    val geometries = remember { mutableStateMapOf<Int, GridGeometry>() }
     var settingsOpen by remember { mutableStateOf(false) }
     val theme = LocalLuma.current
 
     LaunchedEffect(vm.homeSignal) {
         drawerOpen = false
         pickerForPage = null
+        pickerDrag = null
         settingsOpen = false
-        pagerState.animateScrollToPage(0)
+        pagerState.animateScrollToPage(vm.homeIndex)
+    }
+
+    /** The cells a widget dragged out of the picker would take on [page], or null if it isn't over the grid. */
+    fun previewFor(d: PickerDrag, page: Int): DropPreview? {
+        val geo = geometries[page] ?: return null
+        if (!geo.bounds.contains(d.pointer)) return null
+        val cols = d.cols.coerceIn(1, GRID_COLS)
+        val rows = d.rows.coerceIn(1, vm.gridRows)
+        val col = ((d.pointer.x - geo.bounds.left - cols * geo.cellPx / 2f) / geo.cellPx).roundToInt().coerceIn(0, GRID_COLS - cols)
+        val row = ((d.pointer.y - geo.bounds.top - rows * geo.cellPx / 2f) / geo.cellPx).roundToInt().coerceIn(0, vm.gridRows - rows)
+        return DropPreview(col, row, cols, rows, vm.canPlace(page, WidgetItem(-1, col, row, cols, rows)))
     }
 
     BackHandler {
@@ -100,7 +128,7 @@ fun LauncherRoot(
             settingsOpen -> settingsOpen = false
             pickerForPage != null -> pickerForPage = null
             drawerOpen -> drawerOpen = false
-            pagerState.currentPage != 0 -> scope.launch { pagerState.animateScrollToPage(0) }
+            pagerState.currentPage != vm.homeIndex -> scope.launch { pagerState.animateScrollToPage(vm.homeIndex) }
         }
     }
 
@@ -131,7 +159,7 @@ fun LauncherRoot(
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = theme.scrim)))
         }
         // Over a wallpaper the overlays are translucent, so hide the pages under them instead of letting them ghost through.
-        val overlayOpen = drawerOpen || settingsOpen || pickerForPage != null
+        val overlayOpen = drawerOpen || settingsOpen || (pickerForPage != null && pickerDrag == null)
         Column(
             Modifier
                 .fillMaxSize()
@@ -139,15 +167,18 @@ fun LauncherRoot(
                 .nestedScroll(openDrawerOnSwipeUp),
         ) {
             HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
-                if (page == 0) {
+                val widgetPage = vm.widgetPageAt(page)
+                if (widgetPage == null) {
                     HomePage(vm, onOpenSettings = { settingsOpen = true })
                 } else {
                     WidgetPage(
                         vm = vm,
-                        pageIndex = page - 1,
+                        pageIndex = widgetPage,
                         widgetHost = widgetHost,
                         widgetManager = widgetManager,
-                        onAddWidget = { pickerForPage = page - 1 },
+                        dropPreview = if (pickerForPage == widgetPage) pickerDrag?.let { previewFor(it, widgetPage) } else null,
+                        onGeometry = { geometries[widgetPage] = it },
+                        onAddWidget = { pickerForPage = widgetPage },
                         onRemovePage = { idx -> vm.removePage(idx).forEach(onReleaseWidget) },
                         onConfigureWidget = onConfigureWidget,
                     )
@@ -156,11 +187,10 @@ fun LauncherRoot(
             PageIndicator(
                 count = pagerState.pageCount,
                 current = pagerState.currentPage,
+                homeIndex = vm.homeIndex,
                 onSelect = { scope.launch { pagerState.animateScrollToPage(it) } },
-                onAddPage = {
-                    val idx = vm.addPage()
-                    scope.launch { pagerState.animateScrollToPage(idx + 1) }
-                },
+                onAddLeft = { scope.launch { pagerState.animateScrollToPage(vm.addPage(left = true)) } },
+                onAddRight = { scope.launch { pagerState.animateScrollToPage(vm.addPage(left = false)) } },
             )
         }
 
@@ -181,8 +211,18 @@ fun LauncherRoot(
         pickerForPage?.let { page ->
             NoShadow {
                 WidgetPicker(
-                    onPick = { info, cols, rows -> pickerForPage = null; onPickWidget(page, info, cols, rows) },
-                    onDismiss = { pickerForPage = null },
+                    onPick = { info, cols, rows -> pickerForPage = null; onPickWidget(page, info, cols, rows, null, null) },
+                    onDrag = { pickerDrag = it },
+                    onDrop = { d ->
+                        val spot = previewFor(d, page)
+                        if (spot != null && spot.valid) {
+                            pickerForPage = null
+                            pickerDrag = null
+                            onPickWidget(page, d.info, d.cols, d.rows, spot.col, spot.row)
+                            true
+                        } else false
+                    },
+                    onDismiss = { pickerForPage = null; pickerDrag = null },
                 )
             }
         }
@@ -227,7 +267,7 @@ private fun HomePage(vm: LauncherViewModel, onOpenSettings: () -> Unit) {
                 } else if (t.list.rule) {
                     Box(Modifier.padding(bottom = 10.dp).size(36.dp, 2.dp).background(t.accent ?: t.fg2))
                 }
-                pinnedApps.forEach { entry -> PinnedItem(entry, vm, t) }
+                PinnedList(pinnedApps, vm, t)
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -241,28 +281,98 @@ private fun HomePage(vm: LauncherViewModel, onOpenSettings: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * The pinned apps. Long-press an app and drag to move it up or down the list; long-press and let go without
+ * moving to open its menu.
+ */
 @Composable
-private fun PinnedItem(entry: AppEntry, vm: LauncherViewModel, t: LumaTheme) {
+private fun PinnedList(apps: List<AppEntry>, vm: LauncherViewModel, t: LumaTheme) {
+    var rowHeight by remember { mutableIntStateOf(0) }
+    var dragKey by remember { mutableStateOf<String?>(null) }
+    var dragDy by remember { mutableFloatStateOf(0f) }
+    val keys = apps.map { it.key }
+    val from = dragKey?.let { keys.indexOf(it) } ?: -1
+    val to = if (from >= 0 && rowHeight > 0) (from + (dragDy / rowHeight).roundToInt()).coerceIn(0, apps.lastIndex) else from
+    apps.forEachIndexed { i, entry ->
+        key(entry.key) {
+            // The apps the dragged one passes over make room by one row.
+            val makeRoom = when {
+                from < 0 || i == from -> 0f
+                from < to && i in (from + 1)..to -> -rowHeight.toFloat()
+                from > to && i in to until from -> rowHeight.toFloat()
+                else -> 0f
+            }
+            val shift by animateFloatAsState(makeRoom, label = "pinShift")
+            PinnedItem(
+                entry, vm, t,
+                modifier = Modifier
+                    .onSizeChanged { rowHeight = it.height }
+                    .zIndex(if (i == from) 1f else 0f)
+                    .graphicsLayer {
+                        translationY = if (i == from) dragDy else if (from >= 0) shift else 0f
+                        val scale = if (i == from) 1.04f else 1f
+                        scaleX = scale
+                        scaleY = scale
+                    },
+                onReorderStart = { dragKey = entry.key; dragDy = 0f },
+                onReorderBy = { dragDy += it },
+                onReorderEnd = { commit ->
+                    if (commit && from >= 0 && to != from) {
+                        vm.reorderPinned(keys.toMutableList().apply { add(to, removeAt(from)) })
+                    }
+                    dragKey = null
+                    dragDy = 0f
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PinnedItem(
+    entry: AppEntry,
+    vm: LauncherViewModel,
+    t: LumaTheme,
+    modifier: Modifier,
+    onReorderStart: () -> Unit,
+    onReorderBy: (Float) -> Unit,
+    onReorderEnd: (commit: Boolean) -> Unit,
+) {
     var menu by remember { mutableStateOf(false) }
-    val source = remember { MutableInteractionSource() }
-    val pressed by source.collectIsPressedAsState()
-    Box(Modifier.fillMaxWidth()) {
+    var pressed by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
+    val slop = LocalViewConfiguration.current.touchSlop
+    val start by rememberUpdatedState(onReorderStart)
+    val by by rememberUpdatedState(onReorderBy)
+    val end by rememberUpdatedState(onReorderEnd)
+    Box(modifier.fillMaxWidth()) {
         Text(
             if (t.list.lowercase) entry.label.lowercase() else entry.label,
             color = if (pressed) (t.accent ?: t.fg.copy(alpha = 0.5f)) else t.fg,
-            fontSize = t.list.size,
-            fontWeight = t.list.weight,
-            textAlign = t.align.text,
-            maxLines = 1,
+            fontSize = t.list.size, fontWeight = t.list.weight, textAlign = t.align.text, maxLines = 1,
             modifier = Modifier
                 .fillMaxWidth()
-                .combinedClickable(
-                    interactionSource = source,
-                    indication = null,
-                    onClick = { vm.launch(entry) },
-                    onLongClick = { menu = true },
-                )
+                .pointerInput(entry.key) {
+                    detectTapGestures(
+                        onPress = { pressed = true; tryAwaitRelease(); pressed = false },
+                        onLongPress = { /* handled by the drag detector below */ },
+                        onTap = { vm.launch(entry) },
+                    )
+                }
+                .pointerInput(entry.key) {
+                    var moved = 0f
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = {
+                            moved = 0f
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            start()
+                        },
+                        onDrag = { change, amount -> change.consume(); moved += abs(amount.y); by(amount.y) },
+                        // Let go without moving: show the menu instead of reordering.
+                        onDragEnd = { if (moved < slop) { end(false); menu = true } else end(true) },
+                        onDragCancel = { end(false) },
+                    )
+                }
                 .padding(vertical = t.list.rowPadding),
         )
         AppActionsMenu(menu, { menu = false }, true, entry, vm)
@@ -344,26 +454,49 @@ fun AppActionsMenu(expanded: Boolean, onDismiss: () -> Unit, pinned: Boolean, en
 // ---- Page indicator --------------------------------------------------------------------------
 
 @Composable
-private fun PageIndicator(count: Int, current: Int, onSelect: (Int) -> Unit, onAddPage: () -> Unit) {
+private fun PageIndicator(
+    count: Int,
+    current: Int,
+    homeIndex: Int,
+    onSelect: (Int) -> Unit,
+    onAddLeft: () -> Unit,
+    onAddRight: () -> Unit,
+) {
+    val t = LocalLuma.current
     Row(
         Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Text("+", color = t.fg2, fontSize = 18.sp, modifier = Modifier.clickable(onClick = onAddLeft).padding(horizontal = 10.dp))
         repeat(count) { i ->
-            Box(
-                Modifier
-                    .padding(horizontal = 6.dp)
-                    .size(if (i == current) 9.dp else 7.dp)
-                    .clip(CircleShape)
-                    .background(if (i == current) LocalLuma.current.fg else LocalLuma.current.fg2.copy(alpha = 0.5f))
-                    .clickable { onSelect(i) },
-            )
+            val active = i == current
+            val color = if (active) t.fg else t.fg2.copy(alpha = 0.5f)
+            if (i == homeIndex) {
+                // The home page is a ring, so you can tell where it is among the widget pages.
+                Box(
+                    Modifier
+                        .padding(horizontal = 6.dp)
+                        .size(11.dp)
+                        .clip(CircleShape)
+                        .border(1.5.dp, color, CircleShape)
+                        .clickable { onSelect(i) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (active) Box(Modifier.size(5.dp).clip(CircleShape).background(color))
+                }
+            } else {
+                Box(
+                    Modifier
+                        .padding(horizontal = 6.dp)
+                        .size(if (active) 9.dp else 7.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                        .clickable { onSelect(i) },
+                )
+            }
         }
-        Text(
-            "+", color = LocalLuma.current.fg2, fontSize = 18.sp,
-            modifier = Modifier.clickable(onClick = onAddPage).padding(horizontal = 10.dp),
-        )
+        Text("+", color = t.fg2, fontSize = 18.sp, modifier = Modifier.clickable(onClick = onAddRight).padding(horizontal = 10.dp))
     }
 }
 

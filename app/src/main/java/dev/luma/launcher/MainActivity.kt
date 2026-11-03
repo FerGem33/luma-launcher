@@ -36,6 +36,8 @@ class MainActivity : ComponentActivity() {
     private var pendingPage = -1
     private var pendingId = -1
     private var pendingCols = 1
+    private var pendingCol: Int? = null
+    private var pendingRow: Int? = null
     private var pendingRows = 1
 
     private val bindLauncher =
@@ -139,8 +141,10 @@ class MainActivity : ComponentActivity() {
 
     // ---- add-widget flow -------------------------------------------------------------------
 
-    private fun startAddWidget(page: Int, info: AppWidgetProviderInfo, cols: Int?, rows: Int?) {
+    private fun startAddWidget(page: Int, info: AppWidgetProviderInfo, cols: Int?, rows: Int?, col: Int?, row: Int?) {
         pendingPage = page
+        pendingCol = col
+        pendingRow = row
         pendingId = widgetHost.allocateAppWidgetId()
         val (defCols, defRows) = defaultSpan(this, info)
         val cols = cols ?: defCols
@@ -172,7 +176,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun finishPending() {
-        if (widgetManager.getAppWidgetInfo(pendingId) == null || !vm.addWidget(pendingPage, pendingId, pendingCols, pendingRows)) {
+        if (widgetManager.getAppWidgetInfo(pendingId) == null || !vm.addWidgetAt(pendingPage, pendingId, pendingCols, pendingRows, pendingCol, pendingRow)) {
             if (widgetManager.getAppWidgetInfo(pendingId) != null) {
                 Toast.makeText(this, "No space left on this page", Toast.LENGTH_SHORT).show()
             }

@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Box
@@ -46,7 +47,17 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -55,9 +66,21 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 
 @Composable
-fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit, onDismiss: () -> Unit) {
+fun WidgetPicker(
+    onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit,
+    /** A widget is being dragged out of the list (null when the drag ends). */
+    onDrag: (PickerDrag?) -> Unit,
+    /** The drag was released; return true if it landed somewhere valid (the picker then closes). */
+    onDrop: (PickerDrag) -> Boolean,
+    onDismiss: () -> Unit,
+) {
     val ctx = LocalContext.current
     val t = LocalLuma.current
+    // While a widget is dragged out, the list hides so the page behind shows, and a ghost follows the finger.
+    var drag by remember { mutableStateOf<PickerDrag?>(null) }
+    val currentOnDrag by rememberUpdatedState(onDrag)
+    val currentOnDrop by rememberUpdatedState(onDrop)
+    fun setDrag(d: PickerDrag?) { drag = d; currentOnDrag(d) }
     val groups = remember {
         val pm = ctx.packageManager
         AppWidgetManager.getInstance(ctx).installedProviders
@@ -93,9 +116,11 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
         }.toMap()
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
+            .alpha(if (drag != null) 0f else 1f)
             .background(t.overlay)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .statusBarsPadding()
@@ -129,16 +154,44 @@ fun WidgetPicker(onPick: (AppWidgetProviderInfo, cols: Int?, rows: Int?) -> Unit
                     Text(app, color = t.fg2, fontSize = 14.sp,
                         modifier = Modifier.padding(start = 24.dp, top = 20.dp, bottom = 6.dp))
                 }
-                items(widgets) { w -> WidgetCard(w, onPick) }
+                items(widgets) { w ->
+                    WidgetCard(
+                        w, onPick,
+                        onDragStart = { setDrag(it) },
+                        onDragBy = { delta -> drag?.let { d -> setDrag(PickerDrag(d.info, d.variant, d.cols, d.rows, d.pointer + delta)) } },
+                        onDragEnd = { commit ->
+                            val d = drag
+                            if (commit && d != null) currentOnDrop(d)
+                            setDrag(null)
+                        },
+                    )
+                }
             }
         }
+    }
+    drag?.let { d ->
+        val density = LocalDensity.current
+        val w = with(density) { PreviewCell.toPx() } * d.cols.coerceIn(1, GRID_COLS)
+        val h = with(density) { PreviewCell.toPx() } * d.rows.coerceIn(1, 4)
+        Box(
+            Modifier
+                .offset { IntOffset((d.pointer.x - w / 2).roundToInt(), (d.pointer.y - h / 2).roundToInt()) }
+                .alpha(0.92f),
+        ) { WidgetPreview(d.info, d.variant, d.cols, d.rows) }
+    }
     }
 }
 
 /** One widget: its name, then a preview per size it offers (or one preview at its default size). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun WidgetCard(w: PickerWidget, onPick: (AppWidgetProviderInfo, Int?, Int?) -> Unit) {
+private fun WidgetCard(
+    w: PickerWidget,
+    onPick: (AppWidgetProviderInfo, Int?, Int?) -> Unit,
+    onDragStart: (PickerDrag) -> Unit,
+    onDragBy: (Offset) -> Unit,
+    onDragEnd: (commit: Boolean) -> Unit,
+) {
     val ctx = LocalContext.current
     val t = LocalLuma.current
     val sizes: List<SizeVariant?> = w.variants.ifEmpty { listOf(null) }
@@ -159,8 +212,20 @@ private fun WidgetCard(w: PickerWidget, onPick: (AppWidgetProviderInfo, Int?, In
         ) {
             sizes.forEach { v ->
                 val (cols, rows) = v?.let { it.cols to it.rows } ?: defaultSpan(ctx, w.info)
+                var rootPos by remember { mutableStateOf(Offset.Zero) }
                 Column(
-                    Modifier.clickable { onPick(w.info, v?.cols, v?.rows) },
+                    Modifier
+                        .onGloballyPositioned { rootPos = it.positionInRoot() }
+                        .clickable { onPick(w.info, v?.cols, v?.rows) }
+                        // Long-press, then drag: lift the widget out and drop it on the page behind.
+                        .pointerInput(w.info, v) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { local -> onDragStart(PickerDrag(w.info, v, cols, rows, rootPos + local)) },
+                                onDrag = { change, amount -> change.consume(); onDragBy(amount) },
+                                onDragEnd = { onDragEnd(true) },
+                                onDragCancel = { onDragEnd(false) },
+                            )
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     WidgetPreview(w.info, v, cols, rows)
