@@ -26,6 +26,9 @@ with any Android 10+ device, though some widget niceties are Samsung-specific (s
 - **Themes.** Paper, Paper Warm and Paper Dark (monospace, left-aligned), Graphite (true black, hairline type)
   and Custom (your own wallpaper, or a collection that changes daily). A theme sets colours, background,
   typeface, alignment and clock format everywhere, including the status bar icons.
+- **Distracting apps.** Mark apps in Settings; opening one shows a 10-second pause first, with "Not now" always
+  available. Passing it allows a set number of minutes (default 5) during which the app opens freely. Turn on
+  Luma's accessibility service to get a "Time's up" page over the app, with a Close button, when it is over.
 - **Settings.** Long-press empty space on the home page. Appearance holds the theme choice and the Custom
   wallpaper picker; a switch turns app icons on or off.
 
@@ -77,6 +80,8 @@ Everything lives in one module, `app/`.
 | `WidgetFrame.kt` | Wraps a widget view to detect long-press and drag, and to round its corners |
 | `WidgetPicker.kt`, `WidgetDnd.kt` | The picker, its previews, and dragging a widget out of it |
 | `WidgetSizing.kt` | Widget size options, default sizes, Samsung's size variants and settings activities |
+| `Friction.kt` | The pause screen shown before a distracting app opens |
+| `TimeLimit.kt`, `TimeLimitService.kt` | The minutes allowed per pass, and the accessibility service that enforces them |
 | `Theme.kt` | The theme model and the presets |
 | `Settings.kt`, `Menus.kt` | The settings screens; the popup menu design and icon set |
 | `AppIcons.kt`, `Wallpapers.kt` | Loading and caching app icons; importing and loading wallpapers |
@@ -93,11 +98,17 @@ Home. Luma does the parts that matter, using undocumented attributes:
 These are not public APIs and may change with a One UI update. Widgets from other apps only use the standard
 APIs and are unaffected.
 
+## Time limit service
+
+The pause is enforced by Luma itself, but sending you home when time is up needs an accessibility service, which
+you turn on in Settings → Accessibility → Luma (Settings → Distracting apps links there). On Android 13+ a
+sideloaded app may first need "Allow restricted settings" in its App info. The service only reads which app is in
+front; it reads nothing on screen.
+
 ## Roadmap
 
-The distraction-reduction features, none started yet:
+The distraction-reduction features still to build:
 
-- friction on apps you mark as distracting (a pause or a small challenge before they open);
 - usage awareness (today's screen time, total and per app);
 - focus modes (hide everything but a whitelist, on a schedule or a toggle);
 - more Custom-theme settings (dim amount, typeface, clock style).

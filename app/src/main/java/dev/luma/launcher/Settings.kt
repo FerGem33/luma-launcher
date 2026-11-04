@@ -28,7 +28,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Switch
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.width
@@ -45,7 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private enum class SettingsPage { Menu, Appearance }
+private enum class SettingsPage { Menu, Appearance, Distracting }
 
 /** Full-screen settings: a menu whose first entry leads to the appearance (theme) options. */
 @Composable
@@ -73,7 +76,11 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
                 Spacer(Modifier.width(12.dp))
             }
             Text(
-                if (page == SettingsPage.Menu) "Settings" else "Appearance",
+                when (page) {
+                    SettingsPage.Menu -> "Settings"
+                    SettingsPage.Appearance -> "Appearance"
+                    SettingsPage.Distracting -> "Distracting apps"
+                },
                 color = t.fg, fontSize = 22.sp, modifier = Modifier.weight(1f),
             )
             Text("Close", color = t.fg2, fontSize = 16.sp, modifier = Modifier.clickable(onClick = onClose))
@@ -82,6 +89,7 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
             when (page) {
                 SettingsPage.Menu -> SettingsMenu(vm) { page = it }
                 SettingsPage.Appearance -> AppearanceSettings(vm)
+                SettingsPage.Distracting -> DistractingSettings(vm)
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -98,6 +106,14 @@ private fun SettingsMenu(vm: LauncherViewModel, open: (SettingsPage) -> Unit) {
             title = "Appearance",
             subtitle = themeById(vm.themeId).name,
             onClick = { open(SettingsPage.Appearance) },
+        ) {
+            Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
+        }
+        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
+        MenuRow(
+            title = "Distracting apps",
+            subtitle = if (vm.distracting.isEmpty()) "None marked" else "${vm.distracting.size} wait behind a pause",
+            onClick = { open(SettingsPage.Distracting) },
         ) {
             Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
         }
@@ -255,6 +271,114 @@ private fun WallpaperThumb(file: java.io.File, onRemove: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(LumaIcons.Unpin, contentDescription = "Remove image", tint = Color.White, modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+/** A checklist of every app; marked ones wait behind a pause screen before they open. */
+@Composable
+private fun DistractingSettings(vm: LauncherViewModel) {
+    val t = LocalLuma.current
+    var query by remember { mutableStateOf("") }
+    BasicTextField(
+        value = query,
+        onValueChange = { query = it },
+        singleLine = true,
+        textStyle = TextStyle(color = t.fg, fontSize = 18.sp, fontFamily = t.font),
+        cursorBrush = SolidColor(t.fg),
+        decorationBox = { inner ->
+            Box(
+                Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                    .background(t.surface, RoundedCornerShape(24.dp))
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+            ) {
+                if (query.isEmpty()) Text("Search apps", color = t.fg2, fontSize = 18.sp)
+                inner()
+            }
+        },
+    )
+    // While searching, the explanation and time settings step aside so results sit right under the field.
+    if (query.isEmpty()) {
+        Text(
+            "Marked apps show a short pause before they open, so opening them is a choice.",
+            color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 12.dp),
+        )
+        TimeLimitSection(vm)
+    }
+    val shown = vm.apps.filter { it.label.contains(query.trim(), ignoreCase = true) }
+    if (shown.isEmpty()) Text("No apps match.", color = t.fg2, fontSize = 14.sp)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(t.surface)) {
+        shown.forEach { entry ->
+            val marked = entry.key in vm.distracting
+            Row(
+                Modifier.fillMaxWidth().clickable { vm.toggleDistracting(entry) }.padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(entry.label, color = t.fg, fontSize = 17.sp, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = marked,
+                    onCheckedChange = { vm.toggleDistracting(entry) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = t.menu,
+                        checkedTrackColor = t.accent ?: t.fg,
+                        checkedBorderColor = Color.Transparent,
+                        uncheckedThumbColor = t.fg2,
+                        uncheckedTrackColor = t.surfaceHigh,
+                        uncheckedBorderColor = t.fg2.copy(alpha = 0.5f),
+                    ),
+                )
+            }
+        }
+    }
+}
+
+/** Minutes allowed per pass, and the switch that lets Luma enforce them. */
+@Composable
+private fun TimeLimitSection(vm: LauncherViewModel) {
+    val t = LocalLuma.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    var enabled by remember { mutableStateOf(TimeLimitService.isEnabled(context)) }
+    // Re-check when coming back from the system accessibility screen.
+    androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) enabled = TimeLimitService.isEnabled(context)
+        }
+        lifecycle.addObserver(obs)
+        onDispose { lifecycle.removeObserver(obs) }
+    }
+    val choices = TimeLimit.MINUTE_CHOICES
+    val idx = choices.indexOf(vm.graceMinutes).coerceAtLeast(0)
+    Column(Modifier.fillMaxWidth().padding(bottom = 16.dp).clip(RoundedCornerShape(20.dp)).background(t.surface)) {
+        MenuRow(
+            title = "Time per pass",
+            subtitle = "Open and close freely for this long",
+            onClick = {},
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "−", color = if (idx > 0) t.fg else t.fg2.copy(alpha = 0.4f), fontSize = 26.sp,
+                    modifier = Modifier.clickable(enabled = idx > 0) { vm.updateGraceMinutes(choices[idx - 1]) }.padding(12.dp),
+                )
+                Text("${choices[idx]} min", color = t.fg, fontSize = 17.sp)
+                Text(
+                    "+", color = if (idx < choices.lastIndex) t.fg else t.fg2.copy(alpha = 0.4f), fontSize = 26.sp,
+                    modifier = Modifier.clickable(enabled = idx < choices.lastIndex) { vm.updateGraceMinutes(choices[idx + 1]) }.padding(12.dp),
+                )
+            }
+        }
+        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
+        MenuRow(
+            title = "Send me home when time is up",
+            subtitle = if (enabled) "On: Luma's accessibility service is running" else "Off: tap to turn on in Accessibility settings",
+            onClick = {
+                context.startActivity(
+                    android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            },
+        ) {
+            Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
         }
     }
 }

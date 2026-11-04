@@ -125,6 +125,7 @@ fun LauncherRoot(
 
     BackHandler {
         when {
+            vm.frictionFor != null -> vm.dismissFriction()
             settingsOpen -> settingsOpen = false
             pickerForPage != null -> pickerForPage = null
             drawerOpen -> drawerOpen = false
@@ -202,7 +203,7 @@ fun LauncherRoot(
             NoShadow {
                 AppDrawer(
                     vm = vm,
-                    onLaunch = { vm.launch(it); drawerOpen = false },
+                    onLaunch = { vm.launch(it); if (vm.frictionFor == null) drawerOpen = false },
                     onClose = { drawerOpen = false },
                 )
             }
@@ -228,6 +229,8 @@ fun LauncherRoot(
         }
 
         if (settingsOpen) NoShadow { SettingsScreen(vm, onClose = { settingsOpen = false }) }
+
+        vm.frictionFor?.let { entry -> NoShadow { FrictionScreen(entry, vm) } }
     }
 }
 

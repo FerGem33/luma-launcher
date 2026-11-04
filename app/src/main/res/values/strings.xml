@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Luma</string>
+    <string name="accessibility_description">Luma uses this only to notice which app is in front, so it can send you home when the time you allowed a distracting app runs out. It does not read or store anything on screen.</string>
 </resources>

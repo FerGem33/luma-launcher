@@ -8,6 +8,15 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- Friction on distracting apps: mark apps in Settings → Distracting apps, and opening one (from home, the
+  drawer or search) first shows a quiet full-screen pause with a 10-second countdown. "Not now" is always
+  available; "Open for N min" appears when the countdown ends. Back or Home cancels. The list has a search field, which moves above the time settings while you type so results stay visible.
+- Time per pass: passing the pause lets you open and close that app freely for a set number of minutes
+  (1 to 60, default 5, set in Settings → Distracting apps) without the pause again.
+- Optional time limit: with Luma's accessibility service turned on, a distracting app is covered by a "Time's up"
+  page with a Close button (which sends you home) when its time runs out, and by an "Open it from Luma" page
+  when it is opened without passing the pause (from a notification or another launcher).
+  The service only reads which app is in front.
 - Initial launcher scaffold (Kotlin, Jetpack Compose, Gradle 9.3.1, AGP 9.1.0; minSdk 29, targetSdk 36).
 - Niagara-style home page: clock and date, with a text-only list of pinned apps.
   Long-press a pinned app and drag to reorder the list; long-press and let go without moving for
@@ -76,6 +85,7 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Fixed
 
+- The pause screen puts the keyboard away when it opens straight after typing in the drawer's search.
 - App icons could stay on the wrong app: after an uninstall, or while the search list changed, a row
   reused for another app kept the previous app's icon. Icons are now tied to their app, drawer rows are
   keyed by app, and the icon cache is cleared when the app list changes.

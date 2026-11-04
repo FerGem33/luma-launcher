@@ -128,7 +128,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         launcherApps.unregisterCallback(callback)
     }
 
-    fun onHomePressed() { homeSignal++ }
+    fun onHomePressed() { homeSignal++; frictionFor = null }
 
     fun refresh() {
         iconCache.evictAll() // an updated app may have a new icon
@@ -140,8 +140,52 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
 
     // ---- launching -------------------------------------------------------------------------
 
+    /** Opens an app, or holds it behind the pause screen if it is marked as distracting. */
     fun launch(entry: AppEntry) {
+        val pkg = entry.component.packageName
+        if (entry.key in distracting && !TimeLimit.hasGrace(app, pkg)) frictionFor = entry else launchNow(entry)
+    }
+
+    /** Minutes a distracting app stays open after its pause was passed. */
+    var graceMinutes by mutableIntStateOf(TimeLimit.minutes(app))
+        private set
+
+    fun updateGraceMinutes(m: Int) {
+        graceMinutes = m
+        TimeLimit.setMinutes(app, m)
+    }
+
+    /** Passes the pause: the app may be opened and reopened for [graceMinutes]. */
+    fun passFriction(entry: AppEntry) {
+        TimeLimit.grant(app, entry.component.packageName)
+        launchNow(entry)
+    }
+
+    /** Opens an app without any friction (after the pause, or for apps that aren't marked). */
+    fun launchNow(entry: AppEntry) {
+        frictionFor = null
         launcherApps.startMainActivity(entry.component, me, null, null)
+    }
+
+    fun dismissFriction() { frictionFor = null }
+
+    // ---- distracting apps ------------------------------------------------------------------
+
+    /** Apps that wait behind a pause screen before they open (keys of [AppEntry]). */
+    var distracting by mutableStateOf(loadDistracting())
+        private set
+    /** The marked app waiting behind the pause screen, if any. */
+    var frictionFor by mutableStateOf<AppEntry?>(null)
+        private set
+
+    fun toggleDistracting(entry: AppEntry) {
+        distracting = if (entry.key in distracting) distracting - entry.key else distracting + entry.key
+        prefs.edit().putString("distracting", JSONArray(distracting.toList()).toString()).apply()
+    }
+
+    private fun loadDistracting(): Set<String> {
+        val arr = JSONArray(prefs.getString("distracting", "[]"))
+        return List(arr.length()) { arr.getString(it) }.toSet()
     }
 
     fun showAppInfo(entry: AppEntry) {
