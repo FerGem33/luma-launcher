@@ -8,6 +8,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- Swiping up from the right-hand strip of the screen (the last third of its width) opens the app drawer with the
+  search field focused and the keyboard open. A swipe up elsewhere opens it as before.
 - Friction on distracting apps: mark apps in Settings → Distracting apps, and opening one (from home, the
   drawer or search) first shows a quiet full-screen pause with a 10-second countdown. "Not now" is always
   available; "Open for N min" appears when the countdown ends. Back or Home cancels. The list has a search field, which moves above the time settings while you type so results stay visible.

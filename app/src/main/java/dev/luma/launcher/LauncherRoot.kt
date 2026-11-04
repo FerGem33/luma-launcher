@@ -70,6 +70,9 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.em
@@ -97,6 +100,9 @@ fun LauncherRoot(
     val pagerState = rememberPagerState(initialPage = vm.homeIndex) { 1 + vm.pages.size }
     val scope = rememberCoroutineScope()
     var drawerOpen by remember { mutableStateOf(false) }
+    // Set when the drawer was opened from the right-hand strip: it then starts with the search field focused.
+    var drawerSearch by remember { mutableStateOf(false) }
+    var gestureFromEdge by remember { mutableStateOf(false) }
     // Index (in vm.pages) of the widget page the picker was opened from.
     var pickerForPage by remember { mutableStateOf<Int?>(null) }
     var pickerDrag by remember { mutableStateOf<PickerDrag?>(null) }
@@ -106,6 +112,7 @@ fun LauncherRoot(
 
     LaunchedEffect(vm.homeSignal) {
         drawerOpen = false
+        drawerSearch = false
         pickerForPage = null
         pickerDrag = null
         settingsOpen = false
@@ -143,7 +150,7 @@ fun LauncherRoot(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (acc < -100f) drawerOpen = true
+                if (acc < -100f) { drawerSearch = gestureFromEdge; drawerOpen = true }
                 acc = 0f
                 return Velocity.Zero
             }
@@ -165,6 +172,13 @@ fun LauncherRoot(
             Modifier
                 .fillMaxSize()
                 .alpha(if (overlayOpen && theme.background == null) 0f else 1f)
+                // Note where a touch starts (without consuming it): the right-hand strip opens the drawer with search.
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        gestureFromEdge = down.position.x > size.width * EDGE_STRIP_FRACTION
+                    }
+                }
                 .nestedScroll(openDrawerOnSwipeUp),
         ) {
             HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
@@ -203,6 +217,7 @@ fun LauncherRoot(
             NoShadow {
                 AppDrawer(
                     vm = vm,
+                    focusSearch = drawerSearch,
                     onLaunch = { vm.launch(it); if (vm.frictionFor == null) drawerOpen = false },
                     onClose = { drawerOpen = false },
                 )
@@ -233,6 +248,9 @@ fun LauncherRoot(
         vm.frictionFor?.let { entry -> NoShadow { FrictionScreen(entry, vm) } }
     }
 }
+
+/** A swipe up starting right of this fraction of the screen's width opens the drawer with search focused. */
+private const val EDGE_STRIP_FRACTION = 2f / 3f
 
 // ---- Home page (Niagara-style) ---------------------------------------------------------------
 

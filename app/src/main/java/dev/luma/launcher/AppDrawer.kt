@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -55,8 +56,17 @@ private fun letterOf(label: String): Char =
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -> Unit) {
+fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -> Unit, focusSearch: Boolean = false) {
     val t = LocalLuma.current
+    val searchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    LaunchedEffect(focusSearch) {
+        if (focusSearch) {
+            androidx.compose.runtime.withFrameNanos { }
+            runCatching { searchFocus.requestFocus() }
+            keyboard?.show()
+        }
+    }
     var query by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -127,6 +137,7 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
             }
         }
         BasicTextField(
+            modifier = Modifier.focusRequester(searchFocus),
             value = query,
             onValueChange = { query = it },
             singleLine = true,
