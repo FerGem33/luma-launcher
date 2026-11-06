@@ -93,7 +93,8 @@ fun WidgetPicker(
             // (same name, preview, size); show each such widget once.
             .distinctBy { (it, variants) ->
                 listOf(
-                    it.provider.packageName, it.loadLabel(pm), it.previewImage, it.previewLayout,
+                    it.provider.packageName, it.loadLabel(pm), it.previewImage,
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) it.previewLayout else 0,
                     it.minWidth, it.minHeight, it.resizeMode, it.configure, variants,
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) it.targetCellWidth to it.targetCellHeight else null,
                 )
@@ -316,7 +317,7 @@ private fun buildLivePreview(ctx: Context, info: AppWidgetProviderInfo, layoutOv
             if (rv != null) return rv.apply(ctx, holder)
         }
     }
-    val layoutId = layoutOverride ?: info.previewLayout
+    val layoutId = layoutOverride ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) info.previewLayout else 0
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && layoutId != 0) {
         val pkg = info.provider.packageName
         // Inflated without a parent: with one, the inflater builds layout params for the root from its

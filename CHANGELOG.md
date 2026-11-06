@@ -108,6 +108,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Fixed
 
+- The widget picker no longer reads a widget's `previewLayout` on Android 10 and 11, where it doesn't exist and the
+  app would crash opening the picker.
 - The pause screen puts the keyboard away when it opens straight after typing in the drawer's search.
 - App icons could stay on the wrong app: after an uninstall, or while the search list changed, a row
   reused for another app kept the previous app's icon. Icons are now tied to their app, drawer rows are
