@@ -31,8 +31,12 @@ with any Android 10+ device, though some widget niceties are Samsung-specific (s
   available. Passing it allows a set number of minutes (default 5) during which the app opens freely. Turn on
   Luma's accessibility service to get a "Time's up" page over the app, with a Close button, when it is over; an app opened from a notification gets
   the same pause as one opened from Luma.
-- **Settings.** The first row of the app drawer, "Luma Settings" (also found by searching). Default launcher makes Luma your home app. Appearance holds the theme choice and the Custom
-  wallpaper picker; a switch turns app icons on or off.
+- **Settings.** The first row of the app drawer, "Luma Settings" (also found by searching). Grouped as:
+  - *Look:* Appearance, with the theme choice (or a Day / Night pair with switch times), the Custom wallpaper
+    picker and the app icons switch;
+  - *Focus:* Distracting apps (which apps wait behind a pause) and Time limit (minutes per pass, and the
+    accessibility service that enforces it);
+  - *Phone:* Default launcher, to make Luma your home app.
 
 Not built yet: the features the launcher is for. See the [roadmap](#roadmap).
 

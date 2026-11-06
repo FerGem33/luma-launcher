@@ -56,9 +56,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private enum class SettingsPage { Menu, Appearance, Distracting }
+private enum class SettingsPage { Menu, Appearance, Distracting, TimeLimit }
 
-/** Full-screen settings: a menu whose first entry leads to the appearance (theme) options. */
+/** Full-screen settings: a menu of grouped entries (Look, Focus, Phone), each leading to its own page. */
 @Composable
 fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
     val t = LocalLuma.current
@@ -88,6 +88,7 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
                     SettingsPage.Menu -> "Settings"
                     SettingsPage.Appearance -> "Appearance"
                     SettingsPage.Distracting -> "Distracting apps"
+                    SettingsPage.TimeLimit -> "Time limit"
                 },
                 color = t.fg, fontSize = 22.sp, modifier = Modifier.weight(1f),
             )
@@ -98,6 +99,7 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
                 SettingsPage.Menu -> SettingsMenu(vm) { page = it }
                 SettingsPage.Appearance -> AppearanceSettings(vm)
                 SettingsPage.Distracting -> DistractingSettings(vm)
+                SettingsPage.TimeLimit -> TimeLimitSettings(vm)
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -107,46 +109,69 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
 @Composable
 private fun SettingsMenu(vm: LauncherViewModel, open: (SettingsPage) -> Unit) {
     val t = LocalLuma.current
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(t.surface),
-    ) {
+    val arrow = @Composable {
+        Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
+    }
+    SectionHeader("Look")
+    SettingsCard {
         MenuRow(
             title = "Appearance",
             subtitle = if (vm.dayNight) "${themeById(vm.dayThemeId).name} by day, ${themeById(vm.nightThemeId).name} by night" else themeById(vm.themeId).name,
             onClick = { open(SettingsPage.Appearance) },
-        ) {
-            Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
-        }
-        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
+            trailing = arrow,
+        )
+    }
+    SectionHeader("Focus")
+    SettingsCard {
         MenuRow(
             title = "Distracting apps",
             subtitle = if (vm.distracting.isEmpty()) "None marked" else "${vm.distracting.size} wait behind a pause",
             onClick = { open(SettingsPage.Distracting) },
-        ) {
-            Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
-        }
-        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
-        DefaultLauncherRow()
-        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
+            trailing = arrow,
+        )
+        Divider()
         MenuRow(
-            title = "App icons",
-            subtitle = if (vm.showIcons) "Shown next to app names" else "Hidden: names only",
-            onClick = { vm.updateShowIcons(!vm.showIcons) },
-        ) {
-            Switch(
-                checked = vm.showIcons,
-                onCheckedChange = { vm.updateShowIcons(it) },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = t.menu,
-                    checkedTrackColor = t.accent ?: t.fg,
-                    checkedBorderColor = Color.Transparent,
-                    uncheckedThumbColor = t.fg2,
-                    uncheckedTrackColor = t.surfaceHigh,
-                    uncheckedBorderColor = t.fg2.copy(alpha = 0.5f),
-                ),
-            )
-        }
+            title = "Time limit",
+            subtitle = "${vm.graceMinutes} ${if (vm.graceMinutes == 1) "minute" else "minutes"} per pass",
+            onClick = { open(SettingsPage.TimeLimit) },
+            trailing = arrow,
+        )
     }
+    SectionHeader("Phone")
+    SettingsCard { DefaultLauncherRow() }
+}
+
+/** A small heading above a group of settings. */
+@Composable
+private fun SectionHeader(title: String) {
+    val t = LocalLuma.current
+    Text(title, color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp, top = 20.dp, bottom = 8.dp))
+}
+
+/** The rounded panel a group of rows sits on. */
+@Composable
+private fun SettingsCard(content: @Composable () -> Unit) {
+    val t = LocalLuma.current
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(t.surface)) { content() }
+}
+
+@Composable
+private fun Divider() {
+    val t = LocalLuma.current
+    Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
+}
+
+@Composable
+private fun lumaSwitchColors(): androidx.compose.material3.SwitchColors {
+    val t = LocalLuma.current
+    return SwitchDefaults.colors(
+        checkedThumbColor = t.menu,
+        checkedTrackColor = t.accent ?: t.fg,
+        checkedBorderColor = Color.Transparent,
+        uncheckedThumbColor = t.fg2,
+        uncheckedTrackColor = t.surfaceHigh,
+        uncheckedBorderColor = t.fg2.copy(alpha = 0.5f),
+    )
 }
 
 /** Whether Luma is the phone's home app. */
@@ -211,7 +236,7 @@ private fun MenuRow(title: String, subtitle: String, onClick: () -> Unit, traili
 @Composable
 private fun AppearanceSettings(vm: LauncherViewModel) {
     val t = LocalLuma.current
-    Column(Modifier.fillMaxWidth().padding(bottom = 20.dp).clip(RoundedCornerShape(20.dp)).background(t.surface)) {
+    SettingsCard {
         MenuRow(
             title = "Day / Night",
             subtitle = if (vm.dayNight) "Theme changes with the time of day" else "One theme all day",
@@ -220,17 +245,19 @@ private fun AppearanceSettings(vm: LauncherViewModel) {
             Switch(
                 checked = vm.dayNight,
                 onCheckedChange = { vm.updateDayNight(it) },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = t.menu,
-                    checkedTrackColor = t.accent ?: t.fg,
-                    checkedBorderColor = Color.Transparent,
-                    uncheckedThumbColor = t.fg2,
-                    uncheckedTrackColor = t.surfaceHigh,
-                    uncheckedBorderColor = t.fg2.copy(alpha = 0.5f),
-                ),
+                colors = lumaSwitchColors(),
             )
         }
+        Divider()
+        MenuRow(
+            title = "App icons",
+            subtitle = if (vm.showIcons) "Shown next to app names" else "Hidden: names only",
+            onClick = { vm.updateShowIcons(!vm.showIcons) },
+        ) {
+            Switch(checked = vm.showIcons, onCheckedChange = { vm.updateShowIcons(it) }, colors = lumaSwitchColors())
+        }
     }
+    Spacer(Modifier.height(20.dp))
     if (vm.dayNight) {
         ThemeStrip("Day theme", vm.dayThemeId) { vm.setDayTheme(it) }
         Spacer(Modifier.height(20.dp))
@@ -493,13 +520,12 @@ private fun DistractingSettings(vm: LauncherViewModel) {
             }
         },
     )
-    // While searching, the explanation and time settings step aside so results sit right under the field.
+    // While searching, the explanation steps aside so results sit right under the field.
     if (query.isEmpty()) {
         Text(
             "Marked apps show a short pause before they open, so opening them is a choice.",
             color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 12.dp),
         )
-        TimeLimitSection(vm)
     }
     val shown = vm.apps.filter { it.label.contains(query.trim(), ignoreCase = true) }
     if (shown.isEmpty()) Text("No apps match.", color = t.fg2, fontSize = 14.sp)
@@ -514,18 +540,23 @@ private fun DistractingSettings(vm: LauncherViewModel) {
                 Switch(
                     checked = marked,
                     onCheckedChange = { vm.toggleDistracting(entry) },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = t.menu,
-                        checkedTrackColor = t.accent ?: t.fg,
-                        checkedBorderColor = Color.Transparent,
-                        uncheckedThumbColor = t.fg2,
-                        uncheckedTrackColor = t.surfaceHigh,
-                        uncheckedBorderColor = t.fg2.copy(alpha = 0.5f),
-                    ),
+                    colors = lumaSwitchColors(),
                 )
             }
         }
     }
+}
+
+/** The time limit page: how long a pause lets a distracting app stay open, and enforcing it. */
+@Composable
+private fun TimeLimitSettings(vm: LauncherViewModel) {
+    val t = LocalLuma.current
+    Text(
+        "Passing a distracting app's pause lets you open and close it freely for this long. " +
+            "Turn on the accessibility service to be stopped when the time is up.",
+        color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 12.dp),
+    )
+    TimeLimitSection(vm)
 }
 
 /** Minutes allowed per pass, and the switch that lets Luma enforce them. */

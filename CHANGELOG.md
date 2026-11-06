@@ -84,6 +84,9 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Changed
 
+- The settings menu is grouped under Look (Appearance), Focus (Distracting apps, Time limit) and Phone (Default
+  launcher). The App icons switch moved into Appearance, and the time settings moved out of the Distracting apps
+  page onto their own Time limit page, so the app list starts right under its search field.
 - App icons all share one shape, a rounded square: an adaptive icon is redrawn inside the same mask, and an older
   icon is shrunk onto a backdrop of its own average colour.
 - Settings now open from the first row of the app drawer ("Luma Settings", also found by searching
