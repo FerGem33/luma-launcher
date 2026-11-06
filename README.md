@@ -25,7 +25,7 @@ with any Android 10+ device, though some widget niceties are Samsung-specific (s
 - **Widget picker.** Previews at true relative size, one card per widget with a preview for each size it
   offers, searchable by app or widget name. Tap to add, or long-press and drag a widget straight onto a page.
 - **Themes.** Paper, Paper Warm and Paper Dark (monospace, left-aligned), Graphite (true black, hairline type)
-  and Custom (your own wallpaper, or a collection that changes daily). A theme sets colours, background,
+  and Custom (your own wallpaper, or a collection that changes daily). With Day / Night on, one theme is used by day and another by night, switching at times you choose. A theme sets colours, background,
   typeface, alignment and clock format everywhere, including the status bar icons.
 - **Distracting apps.** Mark apps in Settings; opening one shows a 10-second pause first, with "Not now" always
   available. Passing it allows a set number of minutes (default 5) during which the app opens freely. Turn on
@@ -83,6 +83,7 @@ Everything lives in one module, `app/`.
 | `WidgetSizing.kt` | Widget size options, default sizes, Samsung's size variants and settings activities |
 | `Friction.kt` | The pause screen shown before a distracting app opens |
 | `TimeLimit.kt`, `TimeLimitService.kt` | The minutes allowed per pass, and the accessibility service that enforces them |
+| `ThemeSchedule.kt` | Which theme is showing: the chosen one, or the day or night one by the clock |
 | `Theme.kt` | The theme model and the presets |
 | `Settings.kt`, `Menus.kt` | The settings screens; the popup menu design and icon set |
 | `AppIcons.kt`, `Wallpapers.kt` | Loading and caching app icons; importing and loading wallpapers |

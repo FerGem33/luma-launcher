@@ -59,7 +59,7 @@ class TimeLimitService : AccessibilityService() {
     /** A full-screen page over the app, in the theme's colours, with a Close button that sends you home. */
     private fun showBlock(pkg: String, title: String, message: String) {
         if (overlay != null) return
-        val theme = themeById(getSharedPreferences("luma", Context.MODE_PRIVATE).getString("theme", null) ?: LumaThemes.first().id)
+        val theme = themeById(ThemeSchedule.activeId(this))
         val fg = theme.fg.toArgb()
         val fg2 = theme.fg2.toArgb()
         val font = ResourcesCompat.getFont(this, if (theme.id.startsWith("paper")) R.font.plexmono_regular else R.font.outfit)

@@ -8,6 +8,10 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- Day / Night themes: a switch on the Appearance screen turns the theme into a day theme and a night theme, each
+  picked from the presets, with the times at which day and night begin (default 07:00 and 20:00). The theme flips
+  on time while Luma is open, including the "Time's up" page's colours, and is re-checked as soon as you
+  change a time or the switch. Times are set with a picker in Luma's own style (hour and minute wheels).
 - Swiping up from the right-hand strip of the screen (the last third of its width) opens the app drawer with the
   search field focused and the keyboard open. A swipe up elsewhere opens it as before.
 - Friction on distracting apps: mark apps in Settings → Distracting apps, and opening one (from home, the

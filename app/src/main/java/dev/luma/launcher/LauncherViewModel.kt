@@ -53,7 +53,58 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     var gridRows by mutableIntStateOf(6)
     var themeId by mutableStateOf(prefs.getString("theme", null) ?: LumaThemes.first().id)
         private set
-    val theme: LumaTheme get() = themeById(themeId)
+
+    // ---- day / night themes ----------------------------------------------------------------
+
+    /** Whether the theme follows the time of day (a day theme and a night theme). */
+    var dayNight by mutableStateOf(prefs.getBoolean("dn_enabled", false))
+        private set
+    var dayThemeId by mutableStateOf(prefs.getString("dn_day", null) ?: themeId)
+        private set
+    var nightThemeId by mutableStateOf(prefs.getString("dn_night", null) ?: PaperDarkTheme.id)
+        private set
+    /** Minutes since midnight at which the day theme / the night theme begins. */
+    var dayStart by mutableIntStateOf(prefs.getInt("dn_day_start", ThemeSchedule.DEFAULT_DAY_START))
+        private set
+    var nightStart by mutableIntStateOf(prefs.getInt("dn_night_start", ThemeSchedule.DEFAULT_NIGHT_START))
+        private set
+    /** The clock the schedule is judged by; refreshed regularly so the theme flips on time. */
+    private var minuteOfDay by mutableIntStateOf(ThemeSchedule.minuteOfDay())
+
+    /** The theme showing now: the chosen one, or the day or night one when scheduling is on. */
+    val activeThemeId: String
+        get() = if (!dayNight) themeId else if (ThemeSchedule.isDay(minuteOfDay, dayStart, nightStart)) dayThemeId else nightThemeId
+    val theme: LumaTheme get() = themeById(activeThemeId)
+
+    fun refreshClock() { minuteOfDay = ThemeSchedule.minuteOfDay() }
+
+    fun updateDayNight(on: Boolean) {
+        dayNight = on
+        prefs.edit().putBoolean("dn_enabled", on).apply()
+        refreshClock()
+    }
+
+    fun setDayTheme(id: String) {
+        dayThemeId = id
+        prefs.edit().putString("dn_day", id).apply()
+    }
+
+    fun setNightTheme(id: String) {
+        nightThemeId = id
+        prefs.edit().putString("dn_night", id).apply()
+    }
+
+    fun updateDayStart(minute: Int) {
+        dayStart = minute
+        prefs.edit().putInt("dn_day_start", minute).apply()
+        refreshClock()
+    }
+
+    fun updateNightStart(minute: Int) {
+        nightStart = minute
+        prefs.edit().putInt("dn_night_start", minute).apply()
+        refreshClock()
+    }
 
     fun updateShowIcons(show: Boolean) {
         showIcons = show
@@ -120,6 +171,9 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     init {
+        viewModelScope.launch {
+            while (true) { kotlinx.coroutines.delay(20_000); refreshClock() }
+        }
         refresh()
         launcherApps.registerCallback(callback)
     }
@@ -128,7 +182,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         launcherApps.unregisterCallback(callback)
     }
 
-    fun onHomePressed() { homeSignal++; frictionFor = null }
+    fun onHomePressed() { homeSignal++; frictionFor = null; refreshClock() }
 
     fun refresh() {
         iconCache.evictAll() // an updated app may have a new icon

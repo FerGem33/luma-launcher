@@ -5,6 +5,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -104,7 +112,7 @@ private fun SettingsMenu(vm: LauncherViewModel, open: (SettingsPage) -> Unit) {
     ) {
         MenuRow(
             title = "Appearance",
-            subtitle = themeById(vm.themeId).name,
+            subtitle = if (vm.dayNight) "${themeById(vm.dayThemeId).name} by day, ${themeById(vm.nightThemeId).name} by night" else themeById(vm.themeId).name,
             onClick = { open(SettingsPage.Appearance) },
         ) {
             Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
@@ -154,19 +162,162 @@ private fun MenuRow(title: String, subtitle: String, onClick: () -> Unit, traili
     }
 }
 
-/** Theme choice, and the wallpaper picker for the Custom theme. */
+/** Theme choice (one theme, or a day and a night theme with switch times), and the Custom wallpaper picker. */
 @Composable
 private fun AppearanceSettings(vm: LauncherViewModel) {
     val t = LocalLuma.current
-    Text("Theme", color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        LumaThemes.forEach { option ->
-            ThemeCard(option, selected = option.id == vm.themeId) { vm.setTheme(option.id) }
+    Column(Modifier.fillMaxWidth().padding(bottom = 20.dp).clip(RoundedCornerShape(20.dp)).background(t.surface)) {
+        MenuRow(
+            title = "Day / Night",
+            subtitle = if (vm.dayNight) "Theme changes with the time of day" else "One theme all day",
+            onClick = { vm.updateDayNight(!vm.dayNight) },
+        ) {
+            Switch(
+                checked = vm.dayNight,
+                onCheckedChange = { vm.updateDayNight(it) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = t.menu,
+                    checkedTrackColor = t.accent ?: t.fg,
+                    checkedBorderColor = Color.Transparent,
+                    uncheckedThumbColor = t.fg2,
+                    uncheckedTrackColor = t.surfaceHigh,
+                    uncheckedBorderColor = t.fg2.copy(alpha = 0.5f),
+                ),
+            )
         }
     }
-    if (vm.themeId == CustomTheme.id) {
+    if (vm.dayNight) {
+        ThemeStrip("Day theme", vm.dayThemeId) { vm.setDayTheme(it) }
+        Spacer(Modifier.height(20.dp))
+        ThemeStrip("Night theme", vm.nightThemeId) { vm.setNightTheme(it) }
+        Spacer(Modifier.height(20.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(t.surface)) {
+            TimeRow("Day starts", vm.dayStart) { vm.updateDayStart(it) }
+            Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
+            TimeRow("Night starts", vm.nightStart) { vm.updateNightStart(it) }
+        }
+    } else {
+        Text("Theme", color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LumaThemes.forEach { option ->
+                ThemeCard(option, selected = option.id == vm.themeId) { vm.setTheme(option.id) }
+            }
+        }
+    }
+    val customChosen = if (vm.dayNight) vm.dayThemeId == CustomTheme.id || vm.nightThemeId == CustomTheme.id else vm.themeId == CustomTheme.id
+    if (customChosen) {
         Spacer(Modifier.height(24.dp))
         WallpaperSection(vm)
+    }
+}
+
+/** A row of theme thumbnails to pick one from. */
+@Composable
+private fun ThemeStrip(title: String, selectedId: String, onSelect: (String) -> Unit) {
+    val t = LocalLuma.current
+    Text(title, color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        LumaThemes.forEach { option ->
+            val shape = RoundedCornerShape(18.dp)
+            Column(
+                Modifier
+                    .clip(shape)
+                    .border(2.dp, if (option.id == selectedId) t.accent ?: t.fg else Color.Transparent, shape)
+                    .clickable { onSelect(option.id) }
+                    .padding(6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                ThemeThumbnail(option)
+                Text(option.name, color = t.fg, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            }
+        }
+    }
+}
+
+/** A labelled time; tapping it opens the launcher's own time picker (24-hour). */
+@Composable
+private fun TimeRow(title: String, minute: Int, onChange: (Int) -> Unit) {
+    val t = LocalLuma.current
+    var picking by remember { mutableStateOf(false) }
+    MenuRow(title = title, subtitle = "Tap to change", onClick = { picking = true }) {
+        Text(ThemeSchedule.format(minute), color = t.fg, fontSize = 20.sp)
+    }
+    if (picking) {
+        TimePickerSheet(title, minute, onDismiss = { picking = false }, onConfirm = { picking = false; onChange(it) })
+    }
+}
+
+/** A themed time picker: an hour wheel and a minute wheel that snap to a value, then Cancel / Set. */
+@Composable
+private fun TimePickerSheet(title: String, initial: Int, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
+    val t = LocalLuma.current
+    var hour by remember { mutableStateOf(initial / 60) }
+    var minute by remember { mutableStateOf(initial % 60) }
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(t.menu).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(title, color = t.fg2, fontSize = 16.sp, fontFamily = t.font, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TimeWheel(24, hour) { hour = it }
+                Text(":", color = t.fg, fontSize = 36.sp, fontFamily = t.font, modifier = Modifier.padding(horizontal = 8.dp))
+                TimeWheel(60, minute) { minute = it }
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Cancel", color = t.fg2, fontSize = 18.sp, fontFamily = t.font,
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onDismiss).padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+                Text(
+                    "Set", color = t.fg, fontSize = 18.sp, fontFamily = t.font,
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onConfirm(hour * 60 + minute) }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
+        }
+    }
+}
+
+/** A vertical wheel of 0 until [count] showing three values; the one in the middle is selected. */
+@Composable
+private fun TimeWheel(count: Int, initial: Int, onSelect: (Int) -> Unit) {
+    val t = LocalLuma.current
+    val itemHeight = 56.dp
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = initial)
+    val selected by remember {
+        derivedStateOf {
+            val info = state.layoutInfo
+            val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+            info.visibleItemsInfo.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - center) }?.index ?: initial
+        }
+    }
+    LaunchedEffect(selected) { onSelect(selected) }
+    Box(Modifier.size(width = 88.dp, height = itemHeight * 3), contentAlignment = Alignment.Center) {
+        // Hairlines around the selected row.
+        Column(Modifier.fillMaxWidth().height(itemHeight), verticalArrangement = Arrangement.SpaceBetween) {
+            Box(Modifier.fillMaxWidth().height(1.dp).background(t.fg2.copy(alpha = 0.35f)))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(t.fg2.copy(alpha = 0.35f)))
+        }
+        LazyColumn(
+            state = state,
+            flingBehavior = rememberSnapFlingBehavior(state),
+            contentPadding = PaddingValues(vertical = itemHeight),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(count) { i ->
+                Box(Modifier.fillMaxWidth().height(itemHeight), contentAlignment = Alignment.Center) {
+                    Text(
+                        "%02d".format(i),
+                        color = if (i == selected) t.fg else t.fg2.copy(alpha = 0.6f),
+                        fontSize = if (i == selected) 36.sp else 28.sp,
+                        fontFamily = t.font,
+                    )
+                }
+            }
+        }
     }
 }
 
