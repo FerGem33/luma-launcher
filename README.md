@@ -47,6 +47,8 @@ with any Android 10+ device, though some widget niceties are Samsung-specific (s
   available. Passing it allows a set number of minutes (default 5) during which the app opens freely. Turn on
   Luma's accessibility service to get a "Time's up" page over the app, with a Close button, when it is over; an app opened from a notification gets
   the same pause as one opened from Luma.
+- **Languages.** English, Spanish and Japanese. Luma follows the system language; on Android 13+ you can also
+  pick one for Luma alone in the system's app language settings.
 - **Settings.** The first row of the app drawer, "Luma Settings" (also found by searching). Grouped as:
   - *Look:* Appearance, with the theme choice (or a Day / Night pair with switch times), the Custom wallpaper
     picker and the app icons switch;
@@ -109,6 +111,7 @@ Everything lives in one module, `app/`.
 | `TimeLimit.kt`, `TimeLimitService.kt` | The minutes allowed per pass, and the accessibility service that enforces them |
 | `ThemeSchedule.kt` | Which theme is showing: the chosen one, or the day or night one by the clock |
 | `Theme.kt` | The theme model and the presets |
+| `res/values*/strings.xml` | All user-facing text: English (default), `values-es` Spanish, `values-ja` Japanese |
 | `Settings.kt`, `Menus.kt` | The settings screens; the popup menu design and icon set |
 | `AppIcons.kt`, `Wallpapers.kt` | Loading and caching app icons; importing and loading wallpapers |
 

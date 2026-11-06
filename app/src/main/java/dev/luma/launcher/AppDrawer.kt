@@ -1,5 +1,6 @@
 package dev.luma.launcher
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -79,20 +80,21 @@ fun AppDrawer(
         }
     }
     var query by remember { mutableStateOf("") }
+    val settingsLabel = stringResource(R.string.luma_settings)
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val searching = query.isNotBlank()
     // A new query starts from its best match (nearest the search field), not wherever the old list was scrolled.
     LaunchedEffect(query) { listState.scrollToItem(0) }
 
-    val rows: List<Row2> = remember(vm.apps, query) {
+    val rows: List<Row2> = remember(vm.apps, query, settingsLabel) {
         if (searching) {
             // Names that start with the query come first, then the rest, each in alphabetical order.
             val q = query.trim()
             vm.apps.filter { it.label.contains(q, ignoreCase = true) }
                 .sortedBy { !it.label.startsWith(q, ignoreCase = true) }
                 .map<AppEntry, Row2> { Row2.App(it) }
-                .let { if (SETTINGS_LABEL.contains(q, ignoreCase = true)) it + Row2.Settings else it }
+                .let { if (settingsLabel.contains(q, ignoreCase = true)) it + Row2.Settings else it }
         } else {
             buildList<Row2> {
                 add(Row2.Settings)
@@ -141,7 +143,7 @@ fun AppDrawer(
                             modifier = Modifier.fillMaxWidth().padding(start = 32.dp, end = 12.dp, top = 18.dp, bottom = 2.dp),
                         )
                         is Row2.App -> DrawerItem(r.entry, vm, onLaunch)
-                        Row2.Settings -> SettingsItem(onOpenSettings)
+                        Row2.Settings -> SettingsItem(settingsLabel, onOpenSettings)
                     }
                 }
             }
@@ -168,7 +170,7 @@ fun AppDrawer(
                         .background(t.surface, androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                 ) {
-                    if (query.isEmpty()) Text("Search apps", color = t.fg2, fontSize = 18.sp)
+                    if (query.isEmpty()) Text(stringResource(R.string.search_apps), color = t.fg2, fontSize = 18.sp)
                     inner()
                 }
             },
@@ -176,14 +178,12 @@ fun AppDrawer(
     }
 }
 
-private const val SETTINGS_LABEL = "Luma Settings"
-
 /** The first row of the drawer: "Luma Settings", laid out like an app name. */
 @Composable
-private fun SettingsItem(onClick: () -> Unit) {
+private fun SettingsItem(label: String, onClick: () -> Unit) {
     val t = LocalLuma.current
     Text(
-        if (t.list.lowercase) SETTINGS_LABEL.lowercase() else SETTINGS_LABEL,
+        if (t.list.lowercase) label.lowercase() else label,
         color = t.fg, fontSize = 22.sp, fontWeight = t.list.weight, textAlign = t.align.text, maxLines = 1,
         modifier = Modifier
             .fillMaxWidth()

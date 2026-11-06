@@ -1,5 +1,7 @@
 package dev.luma.launcher
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -113,19 +115,19 @@ fun WidgetPage(
             containerColor = t.menu,
             titleContentColor = t.fg,
             textContentColor = t.fg2,
-            title = { Text("Remove this page?") },
+            title = { Text(stringResource(R.string.remove_page_title)) },
             text = {
                 Text(
-                    if (widgets.size == 1) "Its widget will be removed too." else "Its ${widgets.size} widgets will be removed too.",
+                    pluralStringResource(R.plurals.remove_page_body, widgets.size, widgets.size),
                 )
             },
             confirmButton = {
                 TextButton(onClick = { confirmRemove = false; onRemovePage(pageIndex) }) {
-                    Text("Remove", color = Color(0xFFE5534B))
+                    Text(stringResource(R.string.action_remove), color = Color(0xFFE5534B))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmRemove = false }) { Text("Cancel", color = t.fg) }
+                TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.action_cancel), color = t.fg) }
             },
         )
     }
@@ -239,8 +241,8 @@ fun WidgetPage(
                     onDismiss = { menuAt = null },
                     offset = menuAt ?: DpOffset.Zero,
                 ) {
-                    LumaMenuItem("Add widget", LumaIcons.Add, onClick = { menuAt = null; onAddWidget() })
-                    LumaMenuItem("Remove page", LumaIcons.Delete, danger = true, onClick = {
+                    LumaMenuItem(stringResource(R.string.add_widget), LumaIcons.Add, onClick = { menuAt = null; onAddWidget() })
+                    LumaMenuItem(stringResource(R.string.remove_page), LumaIcons.Delete, danger = true, onClick = {
                         menuAt = null
                         // An empty page goes at once; one with widgets asks first, since the widgets go with it.
                         if (widgets.isEmpty()) onRemovePage(pageIndex) else confirmRemove = true
@@ -299,7 +301,7 @@ private fun WidgetCell(
                     },
                 )
             } else {
-                Text("Widget unavailable", color = LocalLuma.current.fg2, modifier = Modifier.padding(12.dp))
+                Text(stringResource(R.string.widget_unavailable), color = LocalLuma.current.fg2, modifier = Modifier.padding(12.dp))
             }
         }
 
@@ -456,8 +458,8 @@ private fun SelectionFrame(
     ) {
         Box(Modifier.fillMaxSize().clip(shape).background(Color(0x66000000)))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            ActionIcon(LumaIcons.Delete, "Remove widget", onRemove)
-            if (info != null && canReconfigure(ctx, info)) ActionIcon(LumaIcons.Settings, "Widget settings", onConfigure)
+            ActionIcon(LumaIcons.Delete, stringResource(R.string.remove_widget), onRemove)
+            if (info != null && canReconfigure(ctx, info)) ActionIcon(LumaIcons.Settings, stringResource(R.string.widget_settings), onConfigure)
         }
     }
 }

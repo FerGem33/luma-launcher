@@ -38,7 +38,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,16 +63,16 @@ import kotlinx.coroutines.launch
 
 private enum class Demo { None, SwipeUp, RightThird, Sideways, LongPress, Pause, Launcher }
 
-private class TutorialPage(val demo: Demo, val title: String, val line: String)
+private class TutorialPage(val demo: Demo, @StringRes val titleRes: Int, @StringRes val lineRes: Int)
 
 private val tutorialPages = listOf(
-    TutorialPage(Demo.None, "Luma", "A quick tour. Try each gesture."),
-    TutorialPage(Demo.SwipeUp, "Swipe up", "All your apps."),
-    TutorialPage(Demo.RightThird, "Search faster", "Swipe up from the right third."),
-    TutorialPage(Demo.Sideways, "Swipe sideways", "Widgets live on pages beside home."),
-    TutorialPage(Demo.LongPress, "Long-press an app", "Pin it, reorder it, see its info."),
-    TutorialPage(Demo.Pause, "A pause", "Distracting apps make you wait."),
-    TutorialPage(Demo.Launcher, "Make Luma home", "Then the Home button brings you here."),
+    TutorialPage(Demo.None, R.string.app_name, R.string.tour_welcome_line),
+    TutorialPage(Demo.SwipeUp, R.string.tour_swipe_up_title, R.string.tour_swipe_up_line),
+    TutorialPage(Demo.RightThird, R.string.tour_search_title, R.string.tour_search_line),
+    TutorialPage(Demo.Sideways, R.string.tour_sideways_title, R.string.tour_sideways_line),
+    TutorialPage(Demo.LongPress, R.string.tour_longpress_title, R.string.tour_longpress_line),
+    TutorialPage(Demo.Pause, R.string.tour_pause_title, R.string.tour_pause_line),
+    TutorialPage(Demo.Launcher, R.string.tour_home_title, R.string.tour_home_line),
 )
 
 /**
@@ -101,7 +103,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
         HorizontalPager(state = pager, userScrollEnabled = false, modifier = Modifier.weight(1f)) { index ->
             val page = tutorialPages[index]
             var done by remember { mutableStateOf(false) }
-            var hint by remember { mutableStateOf<String?>(null) }
+            var hint by remember { mutableStateOf(false) }
             Column(
                 Modifier.fillMaxSize().padding(horizontal = 32.dp),
                 verticalArrangement = Arrangement.Center,
@@ -121,36 +123,50 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                     }
                     Spacer(Modifier.height(20.dp))
                 }
-                Text(page.title, color = t.fg, fontSize = 28.sp, lineHeight = 36.sp, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    if (done) "Got it." else hint ?: page.line,
-                    color = if (done) t.accent ?: t.fg else t.fg2,
-                    fontSize = 17.sp, lineHeight = 24.sp, textAlign = TextAlign.Center,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                )
+                // On pages with a mini phone the words get a fixed-height block, so the phone never shifts
+                // when a longer language wraps the title onto two lines.
+                val hasStage = page.demo != Demo.None && page.demo != Demo.Launcher
+                Column(
+                    if (hasStage) Modifier.height(150.dp) else Modifier,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(stringResource(page.titleRes), color = t.fg, fontSize = 28.sp, lineHeight = 36.sp, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        if (done) stringResource(R.string.tour_got_it) else if (hint) stringResource(R.string.tour_search_hint) else stringResource(page.lineRes),
+                        color = if (done) t.accent ?: t.fg else t.fg2,
+                        fontSize = 17.sp, lineHeight = 24.sp, textAlign = TextAlign.Center,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
+                }
                 if (page.demo == Demo.Launcher) {
                     Spacer(Modifier.height(24.dp))
                     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(t.surface)) { DefaultLauncherRow() }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+        // The dots get a row to themselves, so longer words ("Siguiente") never squeeze them.
+        Row(
+            Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            repeat(tutorialPages.size) { i ->
+                Box(
+                    Modifier.size(if (i == pager.currentPage) 9.dp else 7.dp).clip(CircleShape)
+                        .background(if (i == pager.currentPage) t.fg else t.fg2.copy(alpha = 0.4f)),
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (onLast) "" else "Skip", color = t.fg2, fontSize = 18.sp,
+                if (onLast) "" else stringResource(R.string.action_skip), color = t.fg2, fontSize = 18.sp, maxLines = 1,
                 modifier = Modifier.weight(1f).clickable(enabled = !onLast, onClick = onFinish).padding(vertical = 10.dp),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                repeat(tutorialPages.size) { i ->
-                    Box(
-                        Modifier.size(if (i == pager.currentPage) 9.dp else 7.dp).clip(CircleShape)
-                            .background(if (i == pager.currentPage) t.fg else t.fg2.copy(alpha = 0.4f)),
-                    )
-                }
-            }
             Text(
-                if (onLast) "Done" else "Next", color = t.fg, fontSize = 20.sp, textAlign = TextAlign.End,
-                modifier = Modifier.weight(1f).clickable {
+                if (onLast) stringResource(R.string.action_done) else stringResource(R.string.action_next),
+                color = t.fg, fontSize = 20.sp, maxLines = 1,
+                modifier = Modifier.clickable {
                     if (onLast) onFinish() else scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
                 }.padding(vertical = 10.dp),
             )
@@ -192,7 +208,7 @@ private fun PhoneMock(modifier: Modifier = Modifier, content: @Composable BoxSco
     )
 }
 
-private val mockPinned = listOf("phone", "notes", "camera")
+private val mockPinned = listOf(R.string.sample_phone, R.string.sample_notes, R.string.sample_camera)
 
 /** The home page, miniature. */
 @Composable
@@ -200,9 +216,9 @@ private fun MockHome(modifier: Modifier = Modifier, pinned: @Composable (String)
     val t = LocalLuma.current
     Column(modifier.fillMaxSize().padding(16.dp)) {
         Text("12:34", color = t.fg, fontSize = 34.sp)
-        Text("fri 06 nov", color = t.accent ?: t.fg2, fontSize = 11.sp)
+        Text(stringResource(R.string.sample_date), color = t.accent ?: t.fg2, fontSize = 11.sp)
         Spacer(Modifier.weight(1f))
-        mockPinned.forEach { pinned(it) }
+        mockPinned.forEach { pinned(stringResource(it)) }
         Spacer(Modifier.height(10.dp))
     }
 }
@@ -223,7 +239,7 @@ private fun MockDrawer(typing: Boolean) {
         }
         Spacer(Modifier.weight(1f))
         Box(Modifier.fillMaxWidth().height(28.dp).clip(RoundedCornerShape(14.dp)).background(t.surfaceHigh).padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
-            Text(if (typing) "br|" else "Search", color = if (typing) t.fg else t.fg2, fontSize = 12.sp)
+            Text(if (typing) "br|" else stringResource(R.string.mock_search), color = if (typing) t.fg else t.fg2, fontSize = 12.sp)
         }
         if (typing) {
             Spacer(Modifier.height(8.dp))
@@ -262,7 +278,7 @@ private fun DemoSwipeUp(onDone: () -> Unit) {
 }
 
 @Composable
-private fun DemoRightThird(onDone: () -> Unit, onHint: (String?) -> Unit) {
+private fun DemoRightThird(onDone: () -> Unit, onHint: (Boolean) -> Unit) {
     val t = LocalLuma.current
     // 0 closed, 1 opened from elsewhere (plain drawer), 2 opened from the right third (search)
     var state by remember { mutableIntStateOf(0) }
@@ -270,9 +286,9 @@ private fun DemoRightThird(onDone: () -> Unit, onHint: (String?) -> Unit) {
         Modifier.swipeDetect { start, d, size ->
             if (d.y < -SWIPE_PX) {
                 state = if (start.x > size.width * 2f / 3f) 2 else 1
-                onHint(if (state == 1) "Start in the shaded third." else null)
+                onHint(state == 1)
                 if (state == 2) onDone()
-            } else if (d.y > SWIPE_PX) { state = 0; onHint(null) }
+            } else if (d.y > SWIPE_PX) { state = 0; onHint(false) }
         },
     ) {
         MockHome()
@@ -335,8 +351,8 @@ private fun DemoLongPress(onDone: () -> Unit) {
                     Column(
                         Modifier.padding(start = 10.dp, bottom = 4.dp).clip(RoundedCornerShape(10.dp)).background(t.menu).padding(horizontal = 10.dp, vertical = 4.dp),
                     ) {
-                        listOf("unpin", "app info", "uninstall").forEach {
-                            Text(it, color = if (it == "uninstall") t.fg2 else t.fg, fontSize = 11.sp, modifier = Modifier.padding(vertical = 3.dp))
+                        listOf(R.string.mock_unpin, R.string.mock_info, R.string.mock_uninstall).forEach {
+                            Text(stringResource(it), color = if (it == R.string.mock_uninstall) t.fg2 else t.fg, fontSize = 11.sp, modifier = Modifier.padding(vertical = 3.dp))
                         }
                     }
                 }
@@ -358,13 +374,13 @@ private fun DemoPause() {
     }
     PhoneMock {
         Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.Center) {
-            Text("Open instagram?", color = t.fg, fontSize = 15.sp, maxLines = 1)
+            Text(stringResource(R.string.open_app_question, "Instagram"), color = t.fg, fontSize = 15.sp)
             Spacer(Modifier.height(6.dp))
-            Text(if (left > 0) "Take a breath. $left" else "Still want to?", color = t.fg2, fontSize = 12.sp)
+            Text(if (left > 0) stringResource(R.string.take_a_breath, left) else stringResource(R.string.mock_still_want), color = t.fg2, fontSize = 12.sp)
             Spacer(Modifier.height(26.dp))
-            Text("Not now", color = t.fg, fontSize = 14.sp)
+            Text(stringResource(R.string.not_now), color = t.fg, fontSize = 14.sp)
             Text(
-                "Open for 5 min", fontSize = 12.sp,
+                stringResource(R.string.open_for_minutes, 5), fontSize = 12.sp,
                 color = if (left == 0) t.fg2 else t.fg2.copy(alpha = 0f),
                 modifier = Modifier.padding(top = 8.dp),
             )

@@ -1,5 +1,6 @@
 package dev.luma.launcher
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -58,22 +59,22 @@ fun FrictionScreen(entry: AppEntry, vm: LauncherViewModel) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = t.align.horizontal,
     ) {
-        Text("Pause", color = t.fg2, fontSize = 16.sp)
+        Text(stringResource(R.string.pause_kicker), color = t.fg2, fontSize = 16.sp)
         Spacer(Modifier.height(8.dp))
-        Text("Open ${entry.label}?", color = t.fg, fontSize = 28.sp, textAlign = t.align.text)
+        Text(stringResource(R.string.open_app_question, entry.label), color = t.fg, fontSize = 28.sp, textAlign = t.align.text)
         Spacer(Modifier.height(12.dp))
         Text(
-            if (left > 0) "Take a breath. $left" else "Is this what you want to be doing right now?",
+            if (left > 0) stringResource(R.string.take_a_breath, left) else stringResource(R.string.still_want),
             color = t.fg2, fontSize = 18.sp, textAlign = t.align.text,
         )
         Spacer(Modifier.height(48.dp))
         Text(
-            "Not now", color = t.fg, fontSize = 22.sp,
+            stringResource(R.string.not_now), color = t.fg, fontSize = 22.sp,
             modifier = Modifier.clickable { vm.dismissFriction() }.padding(vertical = 12.dp),
         )
         if (left == 0) {
             Text(
-                "Open for ${vm.graceMinutes} min", color = t.fg2, fontSize = 18.sp,
+                stringResource(R.string.open_for_minutes, vm.graceMinutes), color = t.fg2, fontSize = 18.sp,
                 modifier = Modifier.clickable { vm.passFriction(entry) }.padding(vertical = 12.dp),
             )
         }

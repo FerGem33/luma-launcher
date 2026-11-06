@@ -50,9 +50,9 @@ class TimeLimitService : AccessibilityService() {
         }.getOrDefault(pkg)
         val minutes = TimeLimit.minutes(this)
         if (expired) {
-            showBlock(pkg, "Time's up", "Your $minutes ${if (minutes == 1) "minute" else "minutes"} in $label ${if (minutes == 1) "is" else "are"} over.", pause = false)
+            showBlock(pkg, getString(R.string.times_up), resources.getQuantityString(R.plurals.times_up_body, minutes, minutes, label), pause = false)
         } else {
-            showBlock(pkg, "Open $label?", "", pause = true)
+            showBlock(pkg, getString(R.string.open_app_question, label), "", pause = true)
         }
     }
 
@@ -84,7 +84,7 @@ class TimeLimitService : AccessibilityService() {
         }
         val goHome = { hideBlock(); performGlobalAction(GLOBAL_ACTION_HOME); Unit }
         val minutes = TimeLimit.minutes(this)
-        val body = text(if (pause) "Take a breath. $FRICTION_SECONDS" else message, 18f, fg2, 12)
+        val body = text(if (pause) getString(R.string.take_a_breath, FRICTION_SECONDS) else message, 18f, fg2, 12)
         val view = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
@@ -94,8 +94,8 @@ class TimeLimitService : AccessibilityService() {
             addView(text(title, 28f, fg))
             addView(body)
             if (pause) {
-                addView(button("Not now", 22f, fg, 48, goHome))
-                val open = button("Open for $minutes min", 18f, fg2, 8) {
+                addView(button(getString(R.string.not_now), 22f, fg, 48, goHome))
+                val open = button(getString(R.string.open_for_minutes, minutes), 18f, fg2, 8) {
                     TimeLimit.grant(this@TimeLimitService, pkg)
                     hideBlock()
                     // Keep watching: cover the app again when this new allowance runs out.
@@ -109,10 +109,10 @@ class TimeLimitService : AccessibilityService() {
                     override fun run() {
                         left--
                         if (left > 0) {
-                            body.text = "Take a breath. $left"
+                            body.text = getString(R.string.take_a_breath, left)
                             uiHandler.postDelayed(this, 1000)
                         } else {
-                            body.text = "Is this what you want to be doing right now?"
+                            body.text = getString(R.string.still_want)
                             open.visibility = View.VISIBLE
                         }
                     }
@@ -120,7 +120,7 @@ class TimeLimitService : AccessibilityService() {
                 tick = t
                 uiHandler.postDelayed(t, 1000)
             } else {
-                addView(button("Close", 22f, fg, 60, goHome))
+                addView(button(getString(R.string.action_close), 22f, fg, 60, goHome))
             }
         }
         val params = WindowManager.LayoutParams(

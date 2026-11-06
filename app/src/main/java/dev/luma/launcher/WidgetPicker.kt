@@ -1,5 +1,6 @@
 package dev.luma.launcher
 
+import androidx.compose.ui.res.stringResource
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
@@ -130,8 +131,8 @@ fun WidgetPicker(
             .imePadding(),
     ) {
         Row(Modifier.fillMaxWidth().padding(24.dp)) {
-            Text("Add widget", color = t.fg, fontSize = 22.sp, modifier = Modifier.weight(1f))
-            Text("Cancel", color = t.fg2, fontSize = 16.sp, modifier = Modifier.clickable(onClick = onDismiss))
+            Text(stringResource(R.string.add_widget), color = t.fg, fontSize = 22.sp, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.action_cancel), color = t.fg2, fontSize = 16.sp, modifier = Modifier.clickable(onClick = onDismiss))
         }
         BasicTextField(
             value = query,
@@ -145,7 +146,7 @@ fun WidgetPicker(
                         .background(t.surface, RoundedCornerShape(24.dp))
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                 ) {
-                    if (query.isEmpty()) Text("Search apps and widgets", color = t.fg2, fontSize = 18.sp)
+                    if (query.isEmpty()) Text(stringResource(R.string.search_widgets), color = t.fg2, fontSize = 18.sp)
                     inner()
                 }
             },

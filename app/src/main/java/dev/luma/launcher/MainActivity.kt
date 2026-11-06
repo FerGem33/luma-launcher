@@ -183,7 +183,7 @@ class MainActivity : ComponentActivity() {
     private fun finishPending() {
         if (widgetManager.getAppWidgetInfo(pendingId) == null || !vm.addWidgetAt(pendingPage, pendingId, pendingCols, pendingRows, pendingCol, pendingRow)) {
             if (widgetManager.getAppWidgetInfo(pendingId) != null) {
-                Toast.makeText(this, "No space left on this page", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.no_space), Toast.LENGTH_SHORT).show()
             }
             cancelPending()
             return

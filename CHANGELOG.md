@@ -8,6 +8,11 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- Spanish and Japanese. Every text in the app (settings, the first-run tour, the pause, the time-up page, menus,
+  dialogs, theme names) now lives in string resources, with English as the default and translations in
+  `values-es` and `values-ja`. Luma follows the system language, and on Android 13+ it can be set per app in
+  Settings → Apps → Luma → Language. The clock's date, minute counts and plurals follow each language's usual form
+  (for example "11月6日(金)" in Japanese).
 - Screenshots in the README (home, drawer, a widget page, the pause and the four themes), kept in
   `docs/screenshots`.
 - First-run tour: on a fresh install Luma opens with seven short pages in the theme's look, each with a small
@@ -110,6 +115,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 - The widget picker no longer reads a widget's `previewLayout` on Android 10 and 11, where it doesn't exist and the
   app would crash opening the picker.
+- The first-run tour's page dots now sit on their own row, so longer words ("Siguiente") don't wrap, and the mini phone
+  stays put when a title wraps onto two lines.
 - The pause screen puts the keyboard away when it opens straight after typing in the drawer's search.
 - App icons could stay on the wrong app: after an uninstall, or while the search list changed, a row
   reused for another app kept the previous app's icon. Icons are now tied to their app, drawer rows are

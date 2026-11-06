@@ -1,5 +1,6 @@
 package dev.luma.launcher
 
+import androidx.compose.ui.res.stringResource
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
@@ -281,7 +282,7 @@ private fun HomePage(vm: LauncherViewModel) {
                 Spacer(Modifier.weight(1f))
                 if (pinnedApps.isEmpty()) {
                     Text(
-                        "Swipe up for all apps.\nLong-press an app to pin it here.",
+                        stringResource(R.string.home_hint),
                         color = t.fg2, fontSize = 15.sp, textAlign = t.align.text,
                     )
                 } else if (t.list.rule) {
@@ -404,7 +405,7 @@ private fun Clock(t: LumaTheme) {
     val c = t.clock
     val time = now.format(DateTimeFormatter.ofPattern(if (c.use24h) "HH:mm" else "h:mm"))
     val meridiem = now.format(DateTimeFormatter.ofPattern("a")).uppercase()
-    val date = now.format(DateTimeFormatter.ofPattern(c.datePattern)).let {
+    val date = now.format(DateTimeFormatter.ofPattern(stringResource(c.datePatternRes))).let {
         when (c.dateCase) {
             TextCase.Lower -> it.lowercase()
             TextCase.Upper -> it.uppercase()
@@ -456,12 +457,12 @@ private fun Clock(t: LumaTheme) {
 fun AppActionsMenu(expanded: Boolean, onDismiss: () -> Unit, pinned: Boolean, entry: AppEntry, vm: LauncherViewModel) {
     LumaMenu(expanded, onDismiss) {
         LumaMenuItem(
-            if (pinned) "Unpin from home" else "Pin to home",
+            if (pinned) stringResource(R.string.unpin_from_home) else stringResource(R.string.pin_to_home),
             if (pinned) LumaIcons.Unpin else LumaIcons.Add,
             onClick = { vm.togglePin(entry); onDismiss() },
         )
-        LumaMenuItem("App info", LumaIcons.Info, onClick = { vm.showAppInfo(entry); onDismiss() })
-        LumaMenuItem("Uninstall", LumaIcons.Delete, danger = true, onClick = { vm.uninstall(entry); onDismiss() })
+        LumaMenuItem(stringResource(R.string.app_info), LumaIcons.Info, onClick = { vm.showAppInfo(entry); onDismiss() })
+        LumaMenuItem(stringResource(R.string.uninstall), LumaIcons.Delete, danger = true, onClick = { vm.uninstall(entry); onDismiss() })
     }
 }
 

@@ -1,5 +1,7 @@
 package dev.luma.launcher
 
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -78,21 +80,21 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit, onOpenTutorial: (
         Row(Modifier.fillMaxWidth().padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
             if (page != SettingsPage.Menu) {
                 Icon(
-                    LumaIcons.Back, contentDescription = "Back", tint = t.fg,
+                    LumaIcons.Back, contentDescription = stringResource(R.string.action_back), tint = t.fg,
                     modifier = Modifier.size(28.dp).clip(CircleShape).clickable { page = SettingsPage.Menu },
                 )
                 Spacer(Modifier.width(12.dp))
             }
             Text(
                 when (page) {
-                    SettingsPage.Menu -> "Settings"
-                    SettingsPage.Appearance -> "Appearance"
-                    SettingsPage.Distracting -> "Distracting apps"
-                    SettingsPage.TimeLimit -> "Time limit"
+                    SettingsPage.Menu -> stringResource(R.string.settings_title)
+                    SettingsPage.Appearance -> stringResource(R.string.settings_appearance)
+                    SettingsPage.Distracting -> stringResource(R.string.settings_distracting)
+                    SettingsPage.TimeLimit -> stringResource(R.string.settings_time_limit)
                 },
-                color = t.fg, fontSize = 22.sp, modifier = Modifier.weight(1f),
+                color = t.fg, fontSize = 22.sp, modifier = Modifier.weight(1f).padding(end = 12.dp),
             )
-            Text("Close", color = t.fg2, fontSize = 16.sp, modifier = Modifier.clickable(onClick = onClose))
+            Text(stringResource(R.string.action_close), color = t.fg2, fontSize = 16.sp, modifier = Modifier.clickable(onClick = onClose))
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             when (page) {
@@ -112,36 +114,36 @@ private fun SettingsMenu(vm: LauncherViewModel, onOpenTutorial: () -> Unit, open
     val arrow = @Composable {
         Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
     }
-    SectionHeader("Look")
+    SectionHeader(stringResource(R.string.section_look))
     SettingsCard {
         MenuRow(
-            title = "Appearance",
-            subtitle = if (vm.dayNight) "${themeById(vm.dayThemeId).name} by day, ${themeById(vm.nightThemeId).name} by night" else themeById(vm.themeId).name,
+            title = stringResource(R.string.settings_appearance),
+            subtitle = if (vm.dayNight) stringResource(R.string.appearance_day_night_summary, stringResource(themeById(vm.dayThemeId).nameRes), stringResource(themeById(vm.nightThemeId).nameRes)) else stringResource(themeById(vm.themeId).nameRes),
             onClick = { open(SettingsPage.Appearance) },
             trailing = arrow,
         )
     }
-    SectionHeader("Focus")
+    SectionHeader(stringResource(R.string.section_focus))
     SettingsCard {
         MenuRow(
-            title = "Distracting apps",
-            subtitle = if (vm.distracting.isEmpty()) "None marked" else "${vm.distracting.size} wait behind a pause",
+            title = stringResource(R.string.settings_distracting),
+            subtitle = if (vm.distracting.isEmpty()) stringResource(R.string.distracting_none) else pluralStringResource(R.plurals.distracting_count, vm.distracting.size, vm.distracting.size),
             onClick = { open(SettingsPage.Distracting) },
             trailing = arrow,
         )
         Divider()
         MenuRow(
-            title = "Time limit",
-            subtitle = "${vm.graceMinutes} ${if (vm.graceMinutes == 1) "minute" else "minutes"} per pass",
+            title = stringResource(R.string.settings_time_limit),
+            subtitle = pluralStringResource(R.plurals.time_limit_summary, vm.graceMinutes, vm.graceMinutes),
             onClick = { open(SettingsPage.TimeLimit) },
             trailing = arrow,
         )
     }
-    SectionHeader("Phone")
+    SectionHeader(stringResource(R.string.section_phone))
     SettingsCard {
         DefaultLauncherRow()
         Divider()
-        MenuRow(title = "How Luma works", subtitle = "The gestures, one more time", onClick = onOpenTutorial, trailing = arrow)
+        MenuRow(title = stringResource(R.string.how_it_works), subtitle = stringResource(R.string.how_it_works_sub), onClick = onOpenTutorial, trailing = arrow)
     }
 }
 
@@ -203,8 +205,8 @@ internal fun DefaultLauncherRow() {
         isDefault = isDefaultHome(context)
     }
     MenuRow(
-        title = "Default launcher",
-        subtitle = if (isDefault) "Luma is your home app" else "Not set: tap to make Luma your home app",
+        title = stringResource(R.string.default_launcher),
+        subtitle = if (isDefault) stringResource(R.string.default_launcher_on) else stringResource(R.string.default_launcher_off),
         onClick = {
             if (!isDefault) {
                 val roles = context.getSystemService(android.app.role.RoleManager::class.java)
@@ -216,7 +218,7 @@ internal fun DefaultLauncherRow() {
             }
         },
     ) {
-        if (isDefault) Text("On", color = t.fg2, fontSize = 16.sp)
+        if (isDefault) Text(stringResource(R.string.action_on), color = t.fg2, fontSize = 16.sp)
         else Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
     }
 }
@@ -228,7 +230,7 @@ private fun MenuRow(title: String, subtitle: String, onClick: () -> Unit, traili
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(title, color = t.fg, fontSize = 18.sp)
             Text(subtitle, color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
         }
@@ -242,8 +244,8 @@ private fun AppearanceSettings(vm: LauncherViewModel) {
     val t = LocalLuma.current
     SettingsCard {
         MenuRow(
-            title = "Day / Night",
-            subtitle = if (vm.dayNight) "Theme changes with the time of day" else "One theme all day",
+            title = stringResource(R.string.daynight_title),
+            subtitle = if (vm.dayNight) stringResource(R.string.daynight_on) else stringResource(R.string.daynight_off),
             onClick = { vm.updateDayNight(!vm.dayNight) },
         ) {
             Switch(
@@ -254,8 +256,8 @@ private fun AppearanceSettings(vm: LauncherViewModel) {
         }
         Divider()
         MenuRow(
-            title = "App icons",
-            subtitle = if (vm.showIcons) "Shown next to app names" else "Hidden: names only",
+            title = stringResource(R.string.app_icons),
+            subtitle = if (vm.showIcons) stringResource(R.string.app_icons_on) else stringResource(R.string.app_icons_off),
             onClick = { vm.updateShowIcons(!vm.showIcons) },
         ) {
             Switch(checked = vm.showIcons, onCheckedChange = { vm.updateShowIcons(it) }, colors = lumaSwitchColors())
@@ -263,17 +265,17 @@ private fun AppearanceSettings(vm: LauncherViewModel) {
     }
     Spacer(Modifier.height(20.dp))
     if (vm.dayNight) {
-        ThemeStrip("Day theme", vm.dayThemeId) { vm.setDayTheme(it) }
+        ThemeStrip(stringResource(R.string.day_theme), vm.dayThemeId) { vm.setDayTheme(it) }
         Spacer(Modifier.height(20.dp))
-        ThemeStrip("Night theme", vm.nightThemeId) { vm.setNightTheme(it) }
+        ThemeStrip(stringResource(R.string.night_theme), vm.nightThemeId) { vm.setNightTheme(it) }
         Spacer(Modifier.height(20.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(t.surface)) {
-            TimeRow("Day starts", vm.dayStart) { vm.updateDayStart(it) }
+            TimeRow(stringResource(R.string.day_starts), vm.dayStart) { vm.updateDayStart(it) }
             Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
-            TimeRow("Night starts", vm.nightStart) { vm.updateNightStart(it) }
+            TimeRow(stringResource(R.string.night_starts), vm.nightStart) { vm.updateNightStart(it) }
         }
     } else {
-        Text("Theme", color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
+        Text(stringResource(R.string.theme_label), color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             LumaThemes.forEach { option ->
                 ThemeCard(option, selected = option.id == vm.themeId) { vm.setTheme(option.id) }
@@ -304,7 +306,7 @@ private fun ThemeStrip(title: String, selectedId: String, onSelect: (String) -> 
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 ThemeThumbnail(option)
-                Text(option.name, color = t.fg, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+                Text(stringResource(option.nameRes), color = t.fg, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
             }
         }
     }
@@ -315,7 +317,7 @@ private fun ThemeStrip(title: String, selectedId: String, onSelect: (String) -> 
 private fun TimeRow(title: String, minute: Int, onChange: (Int) -> Unit) {
     val t = LocalLuma.current
     var picking by remember { mutableStateOf(false) }
-    MenuRow(title = title, subtitle = "Tap to change", onClick = { picking = true }) {
+    MenuRow(title = title, subtitle = stringResource(R.string.tap_to_change), onClick = { picking = true }) {
         Text(ThemeSchedule.format(minute), color = t.fg, fontSize = 20.sp)
     }
     if (picking) {
@@ -344,11 +346,11 @@ private fun TimePickerSheet(title: String, initial: Int, onDismiss: () -> Unit, 
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Cancel", color = t.fg2, fontSize = 18.sp, fontFamily = t.font,
+                    stringResource(R.string.action_cancel), color = t.fg2, fontSize = 18.sp, fontFamily = t.font,
                     modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onDismiss).padding(horizontal = 16.dp, vertical = 10.dp),
                 )
                 Text(
-                    "Set", color = t.fg, fontSize = 18.sp, fontFamily = t.font,
+                    stringResource(R.string.action_set), color = t.fg, fontSize = 18.sp, fontFamily = t.font,
                     modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onConfirm(hour * 60 + minute) }
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                 )
@@ -414,8 +416,8 @@ private fun ThemeCard(option: LumaTheme, selected: Boolean, onClick: () -> Unit)
     ) {
         ThemeThumbnail(option)
         Column(Modifier.weight(1f)) {
-            Text(option.name, color = t.fg, fontSize = 18.sp)
-            Text(option.tagline, color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(stringResource(option.nameRes), color = t.fg, fontSize = 18.sp)
+            Text(stringResource(option.taglineRes), color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }
@@ -438,9 +440,10 @@ private fun ThemeThumbnail(o: LumaTheme) {
                 color = o.fg, fontSize = 16.sp, fontFamily = o.font,
                 fontWeight = if (o.clock.weight.weight <= 300) FontWeight.Light else o.clock.weight,
             )
-            Text("mon 02 nov", color = o.accent ?: o.fg2, fontSize = 6.sp, fontFamily = o.font)
+            Text(stringResource(R.string.sample_date), color = o.accent ?: o.fg2, fontSize = 6.sp, fontFamily = o.font)
             Spacer(Modifier.weight(1f))
-            listOf("phone", "notes", "camera").forEach { label ->
+            listOf(R.string.sample_phone, R.string.sample_notes, R.string.sample_camera).forEach { labelRes ->
+                val label = stringResource(labelRes)
                 Text(label, color = o.fg, fontSize = 9.sp, fontFamily = o.font, modifier = Modifier.padding(vertical = 1.dp))
             }
         }
@@ -454,7 +457,7 @@ private fun WallpaperSection(vm: LauncherViewModel) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(12)) { uris ->
         vm.addWallpapers(uris)
     }
-    Text("Wallpaper", color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
+    Text(stringResource(R.string.wallpaper), color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 10.dp))
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -468,13 +471,13 @@ private fun WallpaperSection(vm: LauncherViewModel) {
                 .clickable { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(LumaIcons.Add, contentDescription = "Add images", tint = t.fg, modifier = Modifier.size(28.dp))
+            Icon(LumaIcons.Add, contentDescription = stringResource(R.string.add_images), tint = t.fg, modifier = Modifier.size(28.dp))
         }
     }
     Text(
-        if (vm.wallpapers.isEmpty()) "No image chosen: your system wallpaper is used."
-        else if (vm.wallpapers.size == 1) "Tap an image's cross to remove it, or add more."
-        else "With several images, one is shown each day.",
+        if (vm.wallpapers.isEmpty()) stringResource(R.string.wallpaper_none)
+        else if (vm.wallpapers.size == 1) stringResource(R.string.wallpaper_one)
+        else stringResource(R.string.wallpaper_many),
         color = t.fg2, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp),
     )
 }
@@ -497,7 +500,7 @@ private fun WallpaperThumb(file: java.io.File, onRemove: () -> Unit) {
                 .clickable(onClick = onRemove),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(LumaIcons.Unpin, contentDescription = "Remove image", tint = Color.White, modifier = Modifier.size(16.dp))
+            Icon(LumaIcons.Unpin, contentDescription = stringResource(R.string.remove_image), tint = Color.White, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -519,7 +522,7 @@ private fun DistractingSettings(vm: LauncherViewModel) {
                     .background(t.surface, RoundedCornerShape(24.dp))
                     .padding(horizontal = 20.dp, vertical = 14.dp),
             ) {
-                if (query.isEmpty()) Text("Search apps", color = t.fg2, fontSize = 18.sp)
+                if (query.isEmpty()) Text(stringResource(R.string.search_apps), color = t.fg2, fontSize = 18.sp)
                 inner()
             }
         },
@@ -527,12 +530,12 @@ private fun DistractingSettings(vm: LauncherViewModel) {
     // While searching, the explanation steps aside so results sit right under the field.
     if (query.isEmpty()) {
         Text(
-            "Marked apps show a short pause before they open, so opening them is a choice.",
+            stringResource(R.string.distracting_explainer),
             color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 12.dp),
         )
     }
     val shown = vm.apps.filter { it.label.contains(query.trim(), ignoreCase = true) }
-    if (shown.isEmpty()) Text("No apps match.", color = t.fg2, fontSize = 14.sp)
+    if (shown.isEmpty()) Text(stringResource(R.string.no_apps_match), color = t.fg2, fontSize = 14.sp)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(t.surface)) {
         shown.forEach { entry ->
             val marked = entry.key in vm.distracting
@@ -556,8 +559,7 @@ private fun DistractingSettings(vm: LauncherViewModel) {
 private fun TimeLimitSettings(vm: LauncherViewModel) {
     val t = LocalLuma.current
     Text(
-        "Passing a distracting app's pause lets you open and close it freely for this long. " +
-            "Turn on the accessibility service to be stopped when the time is up.",
+        stringResource(R.string.time_limit_explainer),
         color = t.fg2, fontSize = 14.sp, modifier = Modifier.padding(bottom = 12.dp),
     )
     TimeLimitSection(vm)
@@ -582,8 +584,8 @@ private fun TimeLimitSection(vm: LauncherViewModel) {
     val idx = choices.indexOf(vm.graceMinutes).coerceAtLeast(0)
     Column(Modifier.fillMaxWidth().padding(bottom = 16.dp).clip(RoundedCornerShape(20.dp)).background(t.surface)) {
         MenuRow(
-            title = "Time per pass",
-            subtitle = "Open and close freely for this long",
+            title = stringResource(R.string.time_per_pass),
+            subtitle = stringResource(R.string.time_per_pass_sub),
             onClick = {},
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -591,7 +593,7 @@ private fun TimeLimitSection(vm: LauncherViewModel) {
                     "−", color = if (idx > 0) t.fg else t.fg2.copy(alpha = 0.4f), fontSize = 26.sp,
                     modifier = Modifier.clickable(enabled = idx > 0) { vm.updateGraceMinutes(choices[idx - 1]) }.padding(12.dp),
                 )
-                Text("${choices[idx]} min", color = t.fg, fontSize = 17.sp)
+                Text(stringResource(R.string.minutes_short, choices[idx]), color = t.fg, fontSize = 17.sp)
                 Text(
                     "+", color = if (idx < choices.lastIndex) t.fg else t.fg2.copy(alpha = 0.4f), fontSize = 26.sp,
                     modifier = Modifier.clickable(enabled = idx < choices.lastIndex) { vm.updateGraceMinutes(choices[idx + 1]) }.padding(12.dp),
@@ -600,8 +602,8 @@ private fun TimeLimitSection(vm: LauncherViewModel) {
         }
         Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
         MenuRow(
-            title = "Send me home when time is up",
-            subtitle = if (enabled) "On: Luma's accessibility service is running" else "Off: tap to turn on in Accessibility settings",
+            title = stringResource(R.string.send_home_title),
+            subtitle = if (enabled) stringResource(R.string.send_home_on) else stringResource(R.string.send_home_off),
             onClick = {
                 context.startActivity(
                     android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
