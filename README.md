@@ -8,6 +8,22 @@ Built with Kotlin and Jetpack Compose. It is developed and tested on a Samsung G
 with any Android 10+ device, though some widget niceties are Samsung-specific (see
 [Samsung widgets](#samsung-widgets)).
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/home.png" width="200" alt="The home page: a clock, the date and a list of pinned apps"><br><sub>Home</sub></td>
+    <td align="center"><img src="docs/screenshots/drawer.png" width="200" alt="The app drawer, scrolled to the E apps, with an A to Z bar and a search field"><br><sub>App drawer</sub></td>
+    <td align="center"><img src="docs/screenshots/widgets.png" width="200" alt="A widget page with weather, sleep, storage and screen time widgets on the grid"><br><sub>Widget page</sub></td>
+    <td align="center"><img src="docs/screenshots/pause.png" width="200" alt="The pause shown before a distracting app opens"><br><sub>The pause before a distracting app</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/themes.png" width="820" alt="The home page in Paper, Paper Warm, Paper Dark and Graphite"><br>
+  <sub>Paper, Paper Warm, Paper Dark and Graphite</sub>
+</p>
+
 ## What it does
 
 - **Home page.** A large clock and date, and a text-only list of the apps you pin. Long-press an app and drag

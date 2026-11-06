@@ -8,6 +8,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- Screenshots in the README (home, drawer, a widget page, the pause and the four themes), kept in
+  `docs/screenshots`.
 - First-run tour: on a fresh install Luma opens with seven short pages in the theme's look, each with a small
   phone you try the gesture on: swipe up for the drawer, swipe up from the right third to search with the
   keyboard, swipe sideways between widget pages, long-press an app for its menu, plus a miniature of the pause
