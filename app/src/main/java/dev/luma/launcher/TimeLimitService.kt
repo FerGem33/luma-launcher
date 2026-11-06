@@ -18,13 +18,14 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.res.ResourcesCompat
 
 /**
- * Sends you home when a distracting app is in front without time left: either its allowed time ran out,
- * or it was opened some way other than through Luma's pause. Only the foreground package name is looked at.
+ * Covers a distracting app that is in front without time left: with a "Time's up" page when its allowed time ran
+ * out, or with the same pause Luma shows when it was opened some other way (a notification, say).
+ * Only the foreground package name is looked at.
  */
 class TimeLimitService : AccessibilityService() {
-    private val handler = Handler(Looper.getMainLooper())
+    private val uiHandler = Handler(Looper.getMainLooper())
     private var watching: String? = null
-    private val expire = Runnable { watching?.let { enforce(it) } }
+    private val expire = Runnable { watching?.let { enforce(it, expired = true) } }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -33,41 +34,57 @@ class TimeLimitService : AccessibilityService() {
         // system UI (which fire events when the screen is added or the shade is pulled) don't count.
         if (overlay != null && pkg != overlayFor && pkg != packageName && pkg != "com.android.systemui") hideBlock()
         if (pkg !in TimeLimit.distractingPackages(this)) return
-        handler.removeCallbacks(expire)
+        uiHandler.removeCallbacks(expire)
         watching = pkg
         val left = TimeLimit.graceUntil(this, pkg) - System.currentTimeMillis()
-        if (left <= 0) enforce(pkg) else handler.postDelayed(expire, left + 200)
+        if (left <= 0) enforce(pkg, expired = false) else uiHandler.postDelayed(expire, left + 200)
     }
 
-    private fun enforce(pkg: String) {
+    /** [expired]: the allowed time just ran out while the app was in use; otherwise it was just opened. */
+    private fun enforce(pkg: String, expired: Boolean) {
         // Only act if the app really is the one in front (the timer may fire after you left it).
         if (rootInActiveWindow?.packageName?.toString() != pkg) return
         if (TimeLimit.hasGrace(this, pkg)) return
         val label = runCatching {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
         }.getOrDefault(pkg)
-        if (TimeLimit.graceUntil(this, pkg) > 0L) {
-            showBlock(pkg, "Time's up", "Your ${TimeLimit.minutes(this)} ${if (TimeLimit.minutes(this) == 1) "minute" else "minutes"} in $label ${if (TimeLimit.minutes(this) == 1) "is" else "are"} over.")
+        val minutes = TimeLimit.minutes(this)
+        if (expired) {
+            showBlock(pkg, "Time's up", "Your $minutes ${if (minutes == 1) "minute" else "minutes"} in $label ${if (minutes == 1) "is" else "are"} over.", pause = false)
         } else {
-            showBlock(pkg, "Open $label from Luma", "$label waits behind a pause. Open it from Luma to continue.")
+            showBlock(pkg, "Open $label?", "", pause = true)
         }
     }
 
     private var overlay: View? = null
     private var overlayFor: String? = null
 
-    /** A full-screen page over the app, in the theme's colours, with a Close button that sends you home. */
-    private fun showBlock(pkg: String, title: String, message: String) {
+    private var tick: Runnable? = null
+
+    /**
+     * A full-screen page over the app, in the theme's colours. With [pause] it is Luma's pause (a countdown, "Not
+     * now", then "Open for N min" which lets the app through); otherwise it only has a Close button.
+     * Both send you home.
+     */
+    private fun showBlock(pkg: String, title: String, message: String, pause: Boolean) {
         if (overlay != null) return
         val theme = themeById(ThemeSchedule.activeId(this))
         val fg = theme.fg.toArgb()
         val fg2 = theme.fg2.toArgb()
         val font = ResourcesCompat.getFont(this, if (theme.id.startsWith("paper")) R.font.plexmono_regular else R.font.outfit)
-        val pad = (32 * resources.displayMetrics.density).toInt()
+        val density = resources.displayMetrics.density
+        val pad = (32 * density).toInt()
         fun text(t: String, size: Float, color: Int, top: Int = 0) = TextView(this).apply {
             this.text = t; textSize = size; setTextColor(color); typeface = font
-            setPadding(0, (top * resources.displayMetrics.density).toInt(), 0, 0)
+            setPadding(0, (top * density).toInt(), 0, 0)
         }
+        fun button(t: String, size: Float, color: Int, top: Int, onClick: () -> Unit) = text(t, size, color).apply {
+            setPadding(0, (top * density).toInt(), 0, (12 * density).toInt())
+            setOnClickListener { onClick() }
+        }
+        val goHome = { hideBlock(); performGlobalAction(GLOBAL_ACTION_HOME); Unit }
+        val minutes = TimeLimit.minutes(this)
+        val body = text(if (pause) "Take a breath. $FRICTION_SECONDS" else message, 18f, fg2, 12)
         val view = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
@@ -75,11 +92,36 @@ class TimeLimitService : AccessibilityService() {
             setPadding(pad, pad, pad, pad)
             isClickable = true
             addView(text(title, 28f, fg))
-            addView(text(message, 18f, fg2, 12))
-            addView(text("Close", 22f, fg, 48).apply {
-                setPadding(0, (60 * resources.displayMetrics.density).toInt(), 0, (12 * resources.displayMetrics.density).toInt())
-                setOnClickListener { hideBlock(); performGlobalAction(GLOBAL_ACTION_HOME) }
-            })
+            addView(body)
+            if (pause) {
+                addView(button("Not now", 22f, fg, 48, goHome))
+                val open = button("Open for $minutes min", 18f, fg2, 8) {
+                    TimeLimit.grant(this@TimeLimitService, pkg)
+                    hideBlock()
+                    // Keep watching: cover the app again when this new allowance runs out.
+                    watching = pkg
+                    uiHandler.removeCallbacks(expire)
+                    uiHandler.postDelayed(expire, minutes * 60_000L + 200)
+                }.apply { visibility = View.GONE }
+                addView(open)
+                var left = FRICTION_SECONDS
+                val t = object : Runnable {
+                    override fun run() {
+                        left--
+                        if (left > 0) {
+                            body.text = "Take a breath. $left"
+                            uiHandler.postDelayed(this, 1000)
+                        } else {
+                            body.text = "Is this what you want to be doing right now?"
+                            open.visibility = View.VISIBLE
+                        }
+                    }
+                }
+                tick = t
+                uiHandler.postDelayed(t, 1000)
+            } else {
+                addView(button("Close", 22f, fg, 60, goHome))
+            }
         }
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
@@ -93,6 +135,8 @@ class TimeLimitService : AccessibilityService() {
     }
 
     private fun hideBlock() {
+        tick?.let { uiHandler.removeCallbacks(it) }
+        tick = null
         overlay?.let { runCatching { getSystemService(WindowManager::class.java).removeView(it) } }
         overlay = null
         overlayFor = null
@@ -101,7 +145,7 @@ class TimeLimitService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onDestroy() {
-        handler.removeCallbacks(expire)
+        uiHandler.removeCallbacks(expire)
         hideBlock()
         super.onDestroy()
     }
