@@ -8,6 +8,11 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- First-run tour: on a fresh install Luma opens with seven short pages in the theme's look, each with a small
+  phone you try the gesture on: swipe up for the drawer, swipe up from the right third to search with the
+  keyboard, swipe sideways between widget pages, long-press an app for its menu, plus a miniature of the pause
+  and the Default launcher button. Each page is a title and one line; Skip or Next move on. Replay it from
+  Settings → Phone → How Luma works. Installs that already have saved settings don't see it unprompted.
 - Settings → Default launcher: shows whether Luma is the phone's home app and, if not, asks Android to make it so
   (the system's "Set as default home app" dialog); it re-checks when you come back.
 - Day / Night themes: a switch on the Appearance screen turns the theme into a day theme and a night theme, each

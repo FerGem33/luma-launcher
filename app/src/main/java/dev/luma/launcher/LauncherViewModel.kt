@@ -46,6 +46,17 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     /** How many widget pages sit to the left of the home page. */
     var homeIndex by mutableIntStateOf(prefs.getInt("home_index", 0).coerceIn(0, pages.size))
         private set
+    /** Whether the first-run walkthrough is showing. Existing installs (anything already saved) skip it. */
+    var showTutorial by mutableStateOf(!prefs.getBoolean("onboarded", prefs.all.isNotEmpty()))
+        private set
+
+    fun finishTutorial() {
+        showTutorial = false
+        prefs.edit().putBoolean("onboarded", true).apply()
+    }
+
+    fun openTutorial() { showTutorial = true }
+
     /** Whether app names show their icon (home list and drawer). */
     var showIcons by mutableStateOf(prefs.getBoolean("show_icons", false))
         private set

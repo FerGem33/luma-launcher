@@ -244,9 +244,13 @@ fun LauncherRoot(
             }
         }
 
-        if (settingsOpen) NoShadow { SettingsScreen(vm, onClose = { settingsOpen = false }) }
+        if (settingsOpen) NoShadow {
+            SettingsScreen(vm, onClose = { settingsOpen = false }, onOpenTutorial = { settingsOpen = false; vm.openTutorial() })
+        }
 
         vm.frictionFor?.let { entry -> NoShadow { FrictionScreen(entry, vm) } }
+
+        if (vm.showTutorial) NoShadow { OnboardingScreen(onFinish = { vm.finishTutorial() }) }
     }
 }
 

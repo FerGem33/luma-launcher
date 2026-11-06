@@ -60,7 +60,7 @@ private enum class SettingsPage { Menu, Appearance, Distracting, TimeLimit }
 
 /** Full-screen settings: a menu of grouped entries (Look, Focus, Phone), each leading to its own page. */
 @Composable
-fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
+fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit, onOpenTutorial: () -> Unit) {
     val t = LocalLuma.current
     var page by remember { mutableStateOf(SettingsPage.Menu) }
     // Back steps out of a sub-page first; this handler is closer to the screen than the launcher's own.
@@ -96,7 +96,7 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             when (page) {
-                SettingsPage.Menu -> SettingsMenu(vm) { page = it }
+                SettingsPage.Menu -> SettingsMenu(vm, onOpenTutorial) { page = it }
                 SettingsPage.Appearance -> AppearanceSettings(vm)
                 SettingsPage.Distracting -> DistractingSettings(vm)
                 SettingsPage.TimeLimit -> TimeLimitSettings(vm)
@@ -107,7 +107,7 @@ fun SettingsScreen(vm: LauncherViewModel, onClose: () -> Unit) {
 }
 
 @Composable
-private fun SettingsMenu(vm: LauncherViewModel, open: (SettingsPage) -> Unit) {
+private fun SettingsMenu(vm: LauncherViewModel, onOpenTutorial: () -> Unit, open: (SettingsPage) -> Unit) {
     val t = LocalLuma.current
     val arrow = @Composable {
         Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
@@ -138,7 +138,11 @@ private fun SettingsMenu(vm: LauncherViewModel, open: (SettingsPage) -> Unit) {
         )
     }
     SectionHeader("Phone")
-    SettingsCard { DefaultLauncherRow() }
+    SettingsCard {
+        DefaultLauncherRow()
+        Divider()
+        MenuRow(title = "How Luma works", subtitle = "The gestures, one more time", onClick = onOpenTutorial, trailing = arrow)
+    }
 }
 
 /** A small heading above a group of settings. */
@@ -182,7 +186,7 @@ private fun isDefaultHome(c: android.content.Context): Boolean {
 
 /** Shows whether Luma is the default launcher; tapping it asks Android to make it so. */
 @Composable
-private fun DefaultLauncherRow() {
+internal fun DefaultLauncherRow() {
     val t = LocalLuma.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle

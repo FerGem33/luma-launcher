@@ -36,7 +36,9 @@ with any Android 10+ device, though some widget niceties are Samsung-specific (s
     picker and the app icons switch;
   - *Focus:* Distracting apps (which apps wait behind a pause) and Time limit (minutes per pass, and the
     accessibility service that enforces it);
-  - *Phone:* Default launcher, to make Luma your home app.
+  - *Phone:* Default launcher, to make Luma your home app, and How Luma works, which replays the walkthrough.
+- **First run.** A short interactive tour opens on a fresh install: a small phone on each page to try the gesture
+  on (swipe up, swipe up on the right, swipe sideways, long-press).
 
 Not built yet: the features the launcher is for. See the [roadmap](#roadmap).
 
@@ -86,6 +88,7 @@ Everything lives in one module, `app/`.
 | `WidgetFrame.kt` | Wraps a widget view to detect long-press and drag, and to round its corners |
 | `WidgetPicker.kt`, `WidgetDnd.kt` | The picker, its previews, and dragging a widget out of it |
 | `WidgetSizing.kt` | Widget size options, default sizes, Samsung's size variants and settings activities |
+| `Onboarding.kt` | The first-run walkthrough |
 | `Friction.kt` | The pause screen shown before a distracting app opens |
 | `TimeLimit.kt`, `TimeLimitService.kt` | The minutes allowed per pass, and the accessibility service that enforces them |
 | `ThemeSchedule.kt` | Which theme is showing: the chosen one, or the day or night one by the clock |
