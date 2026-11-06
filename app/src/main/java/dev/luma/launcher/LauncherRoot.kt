@@ -184,7 +184,7 @@ fun LauncherRoot(
             HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
                 val widgetPage = vm.widgetPageAt(page)
                 if (widgetPage == null) {
-                    HomePage(vm, onOpenSettings = { settingsOpen = true })
+                    HomePage(vm)
                 } else {
                     WidgetPage(
                         vm = vm,
@@ -218,6 +218,7 @@ fun LauncherRoot(
                 AppDrawer(
                     vm = vm,
                     focusSearch = drawerSearch,
+                    onOpenSettings = { drawerOpen = false; settingsOpen = true },
                     onLaunch = { vm.launch(it); if (vm.frictionFor == null) drawerOpen = false },
                     onClose = { drawerOpen = false },
                 )
@@ -255,19 +256,13 @@ private const val EDGE_STRIP_FRACTION = 2f / 3f
 // ---- Home page (Niagara-style) ---------------------------------------------------------------
 
 @Composable
-private fun HomePage(vm: LauncherViewModel, onOpenSettings: () -> Unit) {
+private fun HomePage(vm: LauncherViewModel) {
     val t = LocalLuma.current
-    val density = LocalDensity.current
     val pinnedApps = remember(vm.pinned, vm.apps) {
         val byKey = vm.apps.associateBy { it.key }
         vm.pinned.mapNotNull { byKey[it] }
     }
-    var pageMenu by remember { mutableStateOf<DpOffset?>(null) }
-    BoxWithConstraints(
-        Modifier.fillMaxSize().pointerInput(Unit) {
-            detectTapGestures(onLongPress = { p -> pageMenu = with(density) { DpOffset(p.x.toDp(), p.y.toDp()) } })
-        },
-    ) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
         val fullHeight = maxHeight
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             Column(
@@ -291,13 +286,6 @@ private fun HomePage(vm: LauncherViewModel, onOpenSettings: () -> Unit) {
                 PinnedList(pinnedApps, vm, t)
                 Spacer(Modifier.height(8.dp))
             }
-        }
-        LumaMenu(
-            expanded = pageMenu != null,
-            onDismiss = { pageMenu = null },
-            offset = pageMenu ?: DpOffset.Zero,
-        ) {
-            LumaMenuItem("Settings", LumaIcons.Settings, onClick = { pageMenu = null; onOpenSettings() })
         }
     }
 }

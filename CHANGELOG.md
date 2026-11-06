@@ -84,6 +84,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Changed
 
+- Settings now open from the first row of the app drawer ("Luma Settings", also found by searching
+  "luma" or "settings") instead of a menu after long-pressing the home page, which no longer has a menu.
 - The "Long-press to add a widget" hint on empty widget pages is gone; long-press empty space for the
   page menu.
 - The app is renamed from Lumen to Luma: app label, application id (`dev.luma.launcher`), source package,

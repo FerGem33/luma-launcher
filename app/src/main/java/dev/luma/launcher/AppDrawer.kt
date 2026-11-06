@@ -2,6 +2,9 @@ package dev.luma.launcher
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -49,6 +52,8 @@ import kotlinx.coroutines.launch
 private sealed interface Row2 {
     data class Header(val letter: Char) : Row2
     data class App(val entry: AppEntry) : Row2
+    /** Luma's own settings, listed like an app. */
+    data object Settings : Row2
 }
 
 private fun letterOf(label: String): Char =
@@ -56,7 +61,13 @@ private fun letterOf(label: String): Char =
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -> Unit, focusSearch: Boolean = false) {
+fun AppDrawer(
+    vm: LauncherViewModel,
+    onLaunch: (AppEntry) -> Unit,
+    onClose: () -> Unit,
+    onOpenSettings: () -> Unit,
+    focusSearch: Boolean = false,
+) {
     val t = LocalLuma.current
     val searchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
@@ -80,9 +91,11 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
             val q = query.trim()
             vm.apps.filter { it.label.contains(q, ignoreCase = true) }
                 .sortedBy { !it.label.startsWith(q, ignoreCase = true) }
-                .map { Row2.App(it) }
+                .map<AppEntry, Row2> { Row2.App(it) }
+                .let { if (SETTINGS_LABEL.contains(q, ignoreCase = true)) it + Row2.Settings else it }
         } else {
             buildList<Row2> {
+                add(Row2.Settings)
                 var last: Char? = null
                 vm.apps.forEach { a ->
                     val l = letterOf(a.label)
@@ -118,6 +131,7 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
                     when (val r = rows[i]) {
                         is Row2.Header -> "h:${r.letter}"
                         is Row2.App -> "a:${r.entry.key}"
+                        Row2.Settings -> "settings"
                     }
                 }) { i ->
                     when (val r = rows[i]) {
@@ -127,6 +141,7 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
                             modifier = Modifier.fillMaxWidth().padding(start = 32.dp, end = 12.dp, top = 18.dp, bottom = 2.dp),
                         )
                         is Row2.App -> DrawerItem(r.entry, vm, onLaunch)
+                        Row2.Settings -> SettingsItem(onOpenSettings)
                     }
                 }
             }
@@ -159,6 +174,22 @@ fun AppDrawer(vm: LauncherViewModel, onLaunch: (AppEntry) -> Unit, onClose: () -
             },
         )
     }
+}
+
+private const val SETTINGS_LABEL = "Luma Settings"
+
+/** The first row of the drawer: "Luma Settings", laid out like an app name. */
+@Composable
+private fun SettingsItem(onClick: () -> Unit) {
+    val t = LocalLuma.current
+    Text(
+        if (t.list.lowercase) SETTINGS_LABEL.lowercase() else SETTINGS_LABEL,
+        color = t.fg, fontSize = 22.sp, fontWeight = t.list.weight, textAlign = t.align.text, maxLines = 1,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 32.dp, top = 9.dp, bottom = 9.dp, end = 12.dp),
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
