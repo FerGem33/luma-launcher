@@ -124,8 +124,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Loads (and caches) an app's icon. Call off the main thread. */
     fun loadIcon(entry: AppEntry): androidx.compose.ui.graphics.ImageBitmap? = cachedIcon(entry) ?: runCatching {
-        app.packageManager.getActivityIcon(entry.component)
-            .toBitmap(ICON_PX, ICON_PX).asImageBitmap()
+        uniformIcon(app.packageManager.getActivityIcon(entry.component), ICON_PX).asImageBitmap()
             .also { iconCache.put(entry.key, it) }
     }.getOrNull()
 

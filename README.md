@@ -14,7 +14,7 @@ with any Android 10+ device, though some widget niceties are Samsung-specific (s
   to reorder; long-press and let go for unpin, app info and uninstall.
 - **App drawer.** Swipe up from anywhere. An alphabetical list with an A–Z side bar and a search field at the
   bottom: results sit just above the field, best match nearest your thumb, and names that start with what you
-  typed come first. Optionally shows app icons. Swipe up from the right-hand strip of the screen to open it with the search field
+  typed come first. Optionally shows app icons, all in the same rounded-square shape. Swipe up from the right-hand strip of the screen to open it with the search field
   focused and the keyboard up.
 - **Widget pages.** Swipe sideways to pages of widgets on a 4-column grid, on either side of home. A `+` at
   each end of the page dots adds a page; the home page's dot is a ring.

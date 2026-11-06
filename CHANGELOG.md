@@ -84,6 +84,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Changed
 
+- App icons all share one shape, a rounded square: an adaptive icon is redrawn inside the same mask, and an older
+  icon is shrunk onto a backdrop of its own average colour.
 - Settings now open from the first row of the app drawer ("Luma Settings", also found by searching
   "luma" or "settings") instead of a menu after long-pressing the home page, which no longer has a menu.
 - The "Long-press to add a widget" hint on empty widget pages is gone; long-press empty space for the
