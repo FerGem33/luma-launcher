@@ -8,6 +8,8 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- Settings → Default launcher: shows whether Luma is the phone's home app and, if not, asks Android to make it so
+  (the system's "Set as default home app" dialog); it re-checks when you come back.
 - Day / Night themes: a switch on the Appearance screen turns the theme into a day theme and a night theme, each
   picked from the presets, with the times at which day and night begin (default 07:00 and 20:00). The theme flips
   on time while Luma is open, including the "Time's up" page's colours, and is re-checked as soon as you

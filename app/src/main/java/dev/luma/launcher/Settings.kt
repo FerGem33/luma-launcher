@@ -126,6 +126,8 @@ private fun SettingsMenu(vm: LauncherViewModel, open: (SettingsPage) -> Unit) {
             Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
         }
         Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
+        DefaultLauncherRow()
+        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(1.dp).background(t.fg2.copy(alpha = 0.2f)))
         MenuRow(
             title = "App icons",
             subtitle = if (vm.showIcons) "Shown next to app names" else "Hidden: names only",
@@ -144,6 +146,49 @@ private fun SettingsMenu(vm: LauncherViewModel, open: (SettingsPage) -> Unit) {
                 ),
             )
         }
+    }
+}
+
+/** Whether Luma is the phone's home app. */
+private fun isDefaultHome(c: android.content.Context): Boolean {
+    val roles = c.getSystemService(android.app.role.RoleManager::class.java)
+    return roles.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)
+}
+
+/** Shows whether Luma is the default launcher; tapping it asks Android to make it so. */
+@Composable
+private fun DefaultLauncherRow() {
+    val t = LocalLuma.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    var isDefault by remember { mutableStateOf(isDefaultHome(context)) }
+    // Re-check on coming back from the system dialog or settings.
+    androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) isDefault = isDefaultHome(context)
+        }
+        lifecycle.addObserver(obs)
+        onDispose { lifecycle.removeObserver(obs) }
+    }
+    val request = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        isDefault = isDefaultHome(context)
+    }
+    MenuRow(
+        title = "Default launcher",
+        subtitle = if (isDefault) "Luma is your home app" else "Not set: tap to make Luma your home app",
+        onClick = {
+            if (!isDefault) {
+                val roles = context.getSystemService(android.app.role.RoleManager::class.java)
+                if (roles.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME)) {
+                    request.launch(roles.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME))
+                } else {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
+                }
+            }
+        },
+    ) {
+        if (isDefault) Text("On", color = t.fg2, fontSize = 16.sp)
+        else Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
     }
 }
 
