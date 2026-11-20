@@ -37,8 +37,9 @@ import android.graphics.drawable.Drawable
  */
 @Composable
 fun rememberAppIcon(vm: LauncherViewModel, entry: AppEntry): ImageBitmap? {
-    val icon = remember(entry.key) { mutableStateOf(vm.cachedIcon(entry)) }
-    LaunchedEffect(entry.key) {
+    val epoch = vm.iconEpoch
+    val icon = remember(entry.key, epoch) { mutableStateOf(vm.cachedIcon(entry)) }
+    LaunchedEffect(entry.key, epoch) {
         if (icon.value == null) icon.value = withContext(Dispatchers.IO) { vm.loadIcon(entry) }
     }
     return icon.value
@@ -111,6 +112,14 @@ fun uniformIcon(icon: Drawable, px: Int): Bitmap {
         icon.setBounds(inset, inset, px - inset, px - inset)
         icon.draw(canvas)
     }
+    return out
+}
+
+/** Draws an icon-pack drawable as it is, filling [px] pixels. */
+fun packedIcon(icon: Drawable, px: Int): Bitmap {
+    val out = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+    icon.setBounds(0, 0, px, px)
+    icon.draw(Canvas(out))
     return out
 }
 

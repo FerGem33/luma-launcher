@@ -126,4 +126,8 @@
         <item quantity="one">Its widget will be removed too.</item>
         <item quantity="other">Its %d widgets will be removed too.</item>
     </plurals>
+    <string name="icon_pack">Icon pack</string>
+    <string name="icon_pack_default">System default</string>
+    <string name="icon_pack_selected">In use</string>
+    <string name="icon_pack_none">No icon packs installed</string>
 </resources>

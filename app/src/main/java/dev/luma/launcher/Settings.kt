@@ -262,6 +262,10 @@ private fun AppearanceSettings(vm: LauncherViewModel) {
         ) {
             Switch(checked = vm.showIcons, onCheckedChange = { vm.updateShowIcons(it) }, colors = lumaSwitchColors())
         }
+        if (vm.showIcons) {
+            Divider()
+            IconPackPicker(vm)
+        }
     }
     Spacer(Modifier.height(20.dp))
     if (vm.dayNight) {
@@ -612,6 +616,36 @@ private fun TimeLimitSection(vm: LauncherViewModel) {
             },
         ) {
             Icon(LumaIcons.Forward, contentDescription = null, tint = t.fg2, modifier = Modifier.size(24.dp))
+        }
+    }
+}
+
+/** Icon pack choice: the apps' own icons, or any installed pack. */
+@Composable
+private fun IconPackPicker(vm: LauncherViewModel) {
+    var open by remember { mutableStateOf(false) }
+    val packs = vm.iconPacks
+    val current = packs.firstOrNull { it.packageName == vm.iconPackPkg }?.label
+        ?: stringResource(R.string.icon_pack_default)
+    MenuRow(
+        title = stringResource(R.string.icon_pack),
+        subtitle = current,
+        onClick = { open = !open },
+    ) {}
+    if (open) {
+        val none = stringResource(R.string.icon_pack_default)
+        val options = listOf<Pair<String?, String>>(null to none) + packs.map { it.packageName to it.label }
+        options.forEach { (pkg, label) ->
+            Divider()
+            MenuRow(
+                title = label,
+                subtitle = if (pkg == vm.iconPackPkg) stringResource(R.string.icon_pack_selected) else "",
+                onClick = { vm.setIconPack(pkg); open = false },
+            ) {}
+        }
+        if (packs.isEmpty()) {
+            Text(stringResource(R.string.icon_pack_none), color = LocalLuma.current.fg2, fontSize = 14.sp,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
         }
     }
 }

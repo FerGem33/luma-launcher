@@ -121,4 +121,8 @@
     <plurals name="remove_page_body">
         <item quantity="other">ウィジェット%d個も一緒に削除されます。</item>
     </plurals>
+    <string name="icon_pack">アイコンパック</string>
+    <string name="icon_pack_default">システム標準</string>
+    <string name="icon_pack_selected">使用中</string>
+    <string name="icon_pack_none">アイコンパックがインストールされていません</string>
 </resources>

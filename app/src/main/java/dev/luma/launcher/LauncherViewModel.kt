@@ -122,6 +122,24 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean("show_icons", show).apply()
     }
 
+    /** Package of the chosen icon pack, or null for the apps' own icons. */
+    var iconPackPkg by mutableStateOf(prefs.getString("icon_pack", null))
+        private set
+    private var iconPack: IconPack? = iconPackPkg?.let { IconPack.load(app, it) }
+    val iconPacks: List<IconPackInfo> get() = installedIconPacks(app)
+
+    fun setIconPack(pkg: String?) {
+        iconPackPkg = pkg
+        iconPack = pkg?.let { IconPack.load(app, it) }
+        prefs.edit().putString("icon_pack", pkg).apply()
+        iconCache.evictAll()
+        iconEpoch++
+    }
+
+    /** Bumped when the icon source changes, so visible icons reload. */
+    var iconEpoch by mutableIntStateOf(0)
+        private set
+
     fun setTheme(id: String) {
         themeId = id
         prefs.edit().putString("theme", id).apply()
@@ -135,6 +153,8 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Loads (and caches) an app's icon. Call off the main thread. */
     fun loadIcon(entry: AppEntry): androidx.compose.ui.graphics.ImageBitmap? = cachedIcon(entry) ?: runCatching {
+        val packed = iconPack?.iconFor(entry.component)
+        if (packed != null) return@runCatching packedIcon(packed, ICON_PX).asImageBitmap().also { iconCache.put(entry.key, it) }
         uniformIcon(app.packageManager.getActivityIcon(entry.component), ICON_PX).asImageBitmap()
             .also { iconCache.put(entry.key, it) }
     }.getOrNull()

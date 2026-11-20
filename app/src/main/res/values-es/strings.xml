@@ -125,4 +125,8 @@
         <item quantity="one">Su widget también se quitará.</item>
         <item quantity="other">Sus %d widgets también se quitarán.</item>
     </plurals>
+    <string name="icon_pack">Paquete de iconos</string>
+    <string name="icon_pack_default">Predeterminado del sistema</string>
+    <string name="icon_pack_selected">En uso</string>
+    <string name="icon_pack_none">No hay paquetes de iconos instalados</string>
 </resources>

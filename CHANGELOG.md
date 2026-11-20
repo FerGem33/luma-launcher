@@ -8,6 +8,9 @@ and commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ### Added
 
+- Icon packs. With "App icons" on, Settings → Appearance → Icon pack lists the installed packs that follow the
+  ADW/Nova/Apex standard (`appfilter.xml`), such as Dove. Apps a pack doesn't cover keep the uniform rounded icon.
+  Calendar and dynamic (`<calendar>`) pack entries are not supported.
 - Spanish and Japanese. Every text in the app (settings, the first-run tour, the pause, the time-up page, menus,
   dialogs, theme names) now lives in string resources, with English as the default and translations in
   `values-es` and `values-ja`. Luma follows the system language, and on Android 13+ it can be set per app in
